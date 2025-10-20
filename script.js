@@ -125,7 +125,7 @@ function switchTab(name){
 function clearForm(){ els.title.value=''; els.qid.value=''; els.topics.value=''; els.refs.value=''; els.body.value=''; }
 els.resetBtn.addEventListener('click', clearForm);
 document.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key==='Enter'){ e.preventDefault(); saveNote(); }});
-els.saveBtn.addEventListener('click', saveNote);
+els.saveBtn.addEventListener('click', () => saveNote());
 
 function saveNote(editId=null){
   const title = els.title.value.trim();
