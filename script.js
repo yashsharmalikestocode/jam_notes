@@ -1,6 +1,6 @@
 /***** CONFIG: paste your Supabase project values *****/
-const SUPABASE_URL = 'https://phwcblejkxiqsrwwmaha.supabase.co';   // <-- replace
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBod2NibGVqa3hpcXNyd3dtYWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5MDkzNzUsImV4cCI6MjA3NjQ4NTM3NX0.l0BB35NCvpyd3t37EYYQ_Ic2_Orh5OV-mon1cVefAc0';                      // <-- replace
+const SUPABASE_URL = 'https://phwcblejkxiqsrwwmaha.supabase.co';   // <-- your project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBod2NibGVqa3hpcXNyd3dtYWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5MDkzNzUsImV4cCI6MjA3NjQ4NTM3NX0.l0BB35NCvpyd3t37EYYQ_Ic2_Orh5OV-mon1cVefAc0'; // <-- your anon key
 
 /***** Local DB (browser backup & offline) *****/
 const DB_KEY = 'jamnotes_v1';
@@ -9,8 +9,11 @@ const loadLocal = () => { try { db = JSON.parse(localStorage.getItem(DB_KEY)||'[
 const saveLocal = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
 const uid = () => 'N'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 
+// State for edit mode (prevents duplicates)
+let editingId = null;
+
 /***** Supabase init *****/
-let supa = null, currentUser = null;
+let supa = null, currentUser = null, rtChannel = null;
 
 async function supaInit(){
   supa = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession:true } });
@@ -18,11 +21,12 @@ async function supaInit(){
   const { data: { session } } = await supa.auth.getSession();
   currentUser = session?.user || null;
   updateAuthUI();
-  if(currentUser) await pullFromCloud();
+  if(currentUser){ await pullFromCloud(); startRealtime(); }
   supa.auth.onAuthStateChange(async (_event, session)=>{
     currentUser = session?.user || null;
     updateAuthUI();
-    if(currentUser) await pullFromCloud();
+    if(currentUser){ await pullFromCloud(); startRealtime(); }
+    else stopRealtime();
     renderSearch(); renderTopicsView();
   });
 }
@@ -50,34 +54,63 @@ async function signInWithMagicLink(){
 async function signOut(){ await supa.auth.signOut(); }
 
 /***** Cloud helpers *****/
+
+// Normalize a record into our local shape
+function normalize(rowOrNote){
+  // Accept either DB row or local note
+  const r = rowOrNote || {};
+  // questions: local array; DB keeps question_id as comma string
+  const questionsArr = Array.isArray(r.questions)
+    ? r.questions.map(String)
+    : (typeof r.question_id === 'string'
+        ? r.question_id.split(',').map(s=>s.trim()).filter(Boolean)
+        : (typeof r.questionId === 'string'
+            ? r.questionId.split(',').map(s=>s.trim()).filter(Boolean)
+            : []));
+  return {
+    id: r.id || uid(),
+    title: r.title || '',
+    // keep a legacy string for compatibility, but use questions[] internally
+    questionId: questionsArr.join(', '),
+    questions: questionsArr,
+    topics: (r.topics || []).map(String),
+    refs: r.refs || '',
+    body: r.body || '',
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : (r.createdAt || Date.now()),
+    updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : (r.updatedAt || Date.now())
+  };
+}
+
+// Pull everything from cloud, merge with local (newer updatedAt wins)
 async function pullFromCloud(){
+  if(!supa || !currentUser) return;
   const { data, error } = await supa.from('notes').select('*').order('updated_at', { ascending:false });
-  if(error){ console.warn(error); return; }
-  // merge with local (newer updatedAt wins)
+  if(error){ console.warn('pull error', error); return; }
   const map = new Map(db.map(n=>[n.id,n]));
   for(const r of data){
-    const n = {
-      id:r.id, title:r.title||'', questionId:r.question_id||'', topics:r.topics||[],
-      refs:r.refs||'', body:r.body||'',
-      createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
-      updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : Date.now()
-    };
+    const n = normalize(r);
     if(map.has(n.id)){
       const cur = map.get(n.id);
       map.set(n.id, (n.updatedAt > cur.updatedAt) ? n : cur);
-    } else map.set(n.id, n);
+    } else {
+      map.set(n.id, n);
+    }
   }
   db = [...map.values()].sort((a,b)=> b.updatedAt-a.updatedAt);
   saveLocal();
+  renderSearch(); renderTopicsView();
 }
+window.pullFromCloud = pullFromCloud; // allow manual triggering from console if needed
 
+// Upsert a single note to cloud
 async function pushOne(note){
-  if(!currentUser) return;
+  if(!supa || !currentUser) return;
   const payload = {
     id: note.id,
     user_id: currentUser.id,
     title: note.title,
-    question_id: note.questionId,
+    // store as comma-separated in DB for compatibility
+    question_id: (note.questions && note.questions.length) ? note.questions.join(', ') : (note.questionId || ''),
     topics: note.topics,
     refs: note.refs,
     body: note.body,
@@ -88,10 +121,41 @@ async function pushOne(note){
   if(error) console.warn('upsert error', error);
 }
 
+// Delete in cloud
 async function deleteCloud(id){
-  if(!currentUser) return;
+  if(!supa || !currentUser) return;
   const { error } = await supa.from('notes').delete().eq('id', id);
   if(error) console.warn('delete error', error);
+}
+
+// Realtime: keep devices in sync
+function startRealtime(){
+  if(!supa || !currentUser) return;
+  stopRealtime();
+  rtChannel = supa
+    .channel('notes-changes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'notes', filter: `user_id=eq.${currentUser.id}` },
+      (payload) => {
+        const row = payload.new || payload.old;
+        if(!row) return;
+        if(payload.eventType === 'DELETE'){
+          db = db.filter(n => n.id !== row.id);
+        } else {
+          const n = normalize(row);
+          const i = db.findIndex(x => x.id === n.id);
+          if(i === -1) db.unshift(n); else db[i] = n;
+        }
+        db.sort((a,b)=> b.updatedAt - a.updatedAt);
+        saveLocal();
+        renderSearch(); renderTopicsView();
+      }
+    )
+    .subscribe();
+}
+function stopRealtime(){
+  if(rtChannel && supa){ supa.removeChannel(rtChannel); }
+  rtChannel = null;
 }
 
 /***** DOM refs *****/
@@ -122,26 +186,47 @@ function switchTab(name){
 }
 
 /***** Save / Reset *****/
-function clearForm(){ els.title.value=''; els.qid.value=''; els.topics.value=''; els.refs.value=''; els.body.value=''; }
+function clearForm(){
+  els.title.value=''; els.qid.value=''; els.topics.value=''; els.refs.value=''; els.body.value='';
+  editingId = null;
+  els.saveBtn.textContent = 'Save Note';
+}
 els.resetBtn.addEventListener('click', clearForm);
 document.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key==='Enter'){ e.preventDefault(); saveNote(); }});
-els.saveBtn.addEventListener('click', () => saveNote());
+els.saveBtn.addEventListener('click', ()=>saveNote()); // single handler only (prevents duplicates)
 
-function saveNote(editId=null){
+function parseCSV(input){
+  return input.split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+function saveNote(){
   const title = els.title.value.trim();
-  const questionId = els.qid.value.trim();
-  const topics = els.topics.value.split(',').map(s=>s.trim()).filter(Boolean);
+  const questions = parseCSV(els.qid.value); // multiple question IDs supported
+  const topics = parseCSV(els.topics.value);
   const refs = els.refs.value.trim();
   const body = els.body.value.trim();
   if(!title && !body){ alert('Please add a title or some note text.'); return; }
   const now = Date.now();
-  if(editId){
-    const idx = db.findIndex(n=>n.id===editId);
-    if(idx>-1){ db[idx] = {...db[idx], title, questionId, topics, refs, body, updatedAt: now}; pushOne(db[idx]); }
+
+  if(editingId){
+    const idx = db.findIndex(n=>n.id===editingId);
+    if(idx>-1){
+      db[idx] = { ...db[idx],
+        title, questions, questionId: questions.join(', '),
+        topics, refs, body, updatedAt: now
+      };
+      pushOne(db[idx]);
+    }
   } else {
-    const note = { id: uid(), title, questionId, topics, refs, body, createdAt: now, updatedAt: now };
-    db.unshift(note); pushOne(note);
+    const note = {
+      id: uid(), title,
+      questions, questionId: questions.join(', '),
+      topics, refs, body, createdAt: now, updatedAt: now
+    };
+    db.unshift(note);
+    pushOne(note);
   }
+
   saveLocal();
   clearForm();
   renderSearch();
@@ -161,11 +246,16 @@ function tokenizeQuery(q){
   }); return t;
 }
 function matches(n,t){
-  const hay=(n.title+' '+n.questionId+' '+n.refs+' '+n.body+' '+n.topics.join(' ')).toLowerCase();
+  const questionsStr = (n.questions && n.questions.length) ? n.questions.join(' ') : (n.questionId || '');
+  const hay=(n.title+' '+questionsStr+' '+n.refs+' '+n.body+' '+(n.topics||[]).join(' ')).toLowerCase();
   if(t.text.length && !t.text.every(x=>hay.includes(x))) return false;
   if(t.title.length && !t.title.every(x=>n.title.toLowerCase().includes(x))) return false;
-  if(t.qid.length && !t.qid.every(x=>n.questionId.toLowerCase().includes(x))) return false;
-  if(t.topic.length && !t.topic.every(x=>n.topics.map(s=>s.toLowerCase()).some(k=>k.includes(x)))) return false;
+  if(t.qid.length){
+    const inQuestions = (n.questions || (n.questionId ? n.questionId.split(',').map(s=>s.trim()) : []))
+      .map(s=>s.toLowerCase());
+    if(!t.qid.every(q=> inQuestions.some(s=>s.includes(q)))) return false;
+  }
+  if(t.topic.length && !t.topic.every(x=> (n.topics||[]).map(s=>s.toLowerCase()).some(k=>k.includes(x)))) return false;
   return true;
 }
 function renderSearch(){
@@ -182,7 +272,7 @@ function renderCard(n){
   node.querySelector('h3').textContent = n.title || '(untitled)';
   const meta = node.querySelector('.meta'); meta.innerHTML='';
   const add=(k,v)=>{ const s=document.createElement('span'); s.textContent=`${k}: ${v}`; meta.appendChild(s); };
-  if(n.questionId) add('QID', n.questionId);
+  // Per your request: DO NOT show questions in the meta.
   if(n.topics?.length) add('Topics', n.topics.join(', '));
   if(n.refs) add('Refs', n.refs);
   const ts=document.createElement('div'); ts.className='hint'; ts.style.fontSize='11px'; ts.textContent='Saved '+new Date(n.updatedAt).toLocaleString(); meta.appendChild(ts);
@@ -197,11 +287,15 @@ function linkify(s){ return s.replace(/(https?:\/\/[^\s)]+)(?![^<]*>)/g,'<a href
 function startEdit(id){
   const n = db.find(x=>x.id===id); if(!n) return;
   switchTab('add');
-  els.title.value=n.title; els.qid.value=n.questionId; els.topics.value=(n.topics||[]).join(', '); els.refs.value=n.refs; els.body.value=n.body;
+  editingId = n.id;
+  els.title.value=n.title;
+  els.qid.value=(n.questions && n.questions.length) ? n.questions.join(', ') : (n.questionId || '');
+  els.topics.value=(n.topics||[]).join(', ');
+  els.refs.value=n.refs;
+  els.body.value=n.body;
   els.saveBtn.textContent='Update Note';
-  const handler=()=>{ saveNote(n.id); els.saveBtn.textContent='Save Note'; els.saveBtn.removeEventListener('click', handler); };
-  els.saveBtn.addEventListener('click', handler, { once:true });
 }
+
 function deleteNote(id){
   db = db.filter(n=>n.id!==id);
   saveLocal();
@@ -244,7 +338,7 @@ function renderTopicsView(selected=null){
 
 /***** Export/Import/Local wipe *****/
 els.exportBtn.onclick = ()=>{
-  const blob = new Blob([JSON.stringify({version:1, exportedAt:Date.now(), notes:db}, null, 2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify({version:2, exportedAt:Date.now(), notes:db}, null, 2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`jam-notes-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
 };
 els.importBtn.onclick = ()=> els.importFile.click();
@@ -254,8 +348,11 @@ els.importFile.onchange = async (e)=>{
     const json=JSON.parse(text); const incoming=json.notes||json||[];
     const map=new Map(db.map(n=>[n.id,n]));
     incoming.forEach(n=>{
-      const clean={ id:n.id||uid(), title:n.title||'', questionId:n.question_id||n.questionId||'', topics:(n.topics||[]).map(String), refs:n.refs||'', body:n.body||'', createdAt:n.createdAt||Date.now(), updatedAt:n.updatedAt||Date.now() };
-      if(map.has(clean.id)){ const cur=map.get(clean.id); map.set(clean.id, (clean.updatedAt>cur.updatedAt)?clean:cur); } else map.set(clean.id, clean);
+      const clean=normalize(n);
+      if(map.has(clean.id)){
+        const cur=map.get(clean.id);
+        map.set(clean.id, (clean.updatedAt>cur.updatedAt)?clean:cur);
+      } else map.set(clean.id, clean);
     });
     db=[...map.values()].sort((a,b)=>b.updatedAt-a.updatedAt);
     saveLocal(); renderSearch(); renderTopicsView(); alert('Import complete');
