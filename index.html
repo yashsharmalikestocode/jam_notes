@@ -3,122 +3,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JAM Notes Tracker</title>
-  <style>
-    :root{
-      --bg:#0b0f14; --panel:#111823; --panel-2:#0f1520; --ink:#e6edf3; --muted:#9fb3c8;
-      --accent:#7cacf8; --accent-2:#57d0c9; --red:#ff6473; --yellow:#ffd166; --green:#7ae582;
-      --border:rgba(255,255,255,.08); --chip:#1b2432;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:linear-gradient(180deg,var(--bg),#0b0f14 60%,#0a1018); color:var(--ink)}
-    a{color:var(--accent)}
-    .wrap{max-width:1100px; margin:0 auto; padding:24px}
-    header{display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px}
-    .brand{display:flex; gap:12px; align-items:center}
-    .logo{width:36px; height:36px; background:conic-gradient(from 180deg at 50% 50%,var(--accent),var(--accent-2),var(--yellow)); border-radius:10px; box-shadow:0 8px 30px rgba(87,208,201,.2)}
-    h1{font-size:20px; margin:0}
-    .tabs{display:flex; background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden}
-    .tab{padding:10px 14px; cursor:pointer; color:var(--muted); border-right:1px solid var(--border); user-select:none}
-    .tab:last-child{border-right:none}
-    .tab.active{color:var(--ink); background:linear-gradient(180deg,rgba(124,172,248,.12),transparent)}
-
-    .grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:16px}
-    .card{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px}
-    .card h2{margin:0 0 10px; font-size:16px}
-    label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
-    input[type="text"], input[type="search"], textarea{width:100%; background:var(--panel-2); color:var(--ink); border:1px solid var(--border); border-radius:12px; padding:12px 12px; outline:none}
-    textarea{min-height:200px; line-height:1.5; resize:vertical}
-    .row{display:flex; gap:10px}
-    .row > *{flex:1}
-    .btn{appearance:none; border:none; background:linear-gradient(180deg,var(--accent),#5693f4); color:#081018; font-weight:700; padding:10px 14px; border-radius:12px; cursor:pointer; box-shadow:0 6px 20px rgba(124,172,248,.25)}
-    .btn.secondary{background:linear-gradient(180deg,#263245,#1a2434); color:var(--ink); border:1px solid var(--border); box-shadow:none}
-    .btn.warn{background:linear-gradient(180deg,#ff7b89,#ff5e74); color:#1a0f12}
-    .btn.small{padding:6px 10px; font-size:12px}
-    .muted{color:var(--muted)}
-    .chips{display:flex; flex-wrap:wrap; gap:8px}
-    .chip{background:var(--chip); border:1px solid var(--border); color:var(--ink); padding:4px 10px; border-radius:999px; font-size:12px}
-    .chip.btn{cursor:pointer}
-    .result{padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--border); margin-bottom:10px}
-    .result h3{margin:0 0 6px; font-size:15px}
-    .meta{display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
-    .meta span{background:#0e141f; padding:4px 8px; border-radius:8px; border:1px solid var(--border)}
-    .empty{padding:12px; border:1px dashed var(--border); border-radius:12px; color:var(--muted); text-align:center}
-    .split{display:flex; gap:8px; justify-content:space-between; align-items:center}
-    .right{margin-left:auto}
-    .spacer{height:8px}
-    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:var(--panel-2); border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px}
-
-    .list{max-height:420px; overflow:auto; padding-right:6px}
-    .topic-group{margin-bottom:16px}
-    .topic-title{position:sticky; top:0; background:linear-gradient(180deg,rgba(10,16,24,.95),rgba(10,16,24,.85)); backdrop-filter: blur(4px); padding:8px 10px; border:1px solid var(--border); border-radius:10px; font-weight:700}
-
-    .inline-actions{display:flex; gap:8px}
-    .timestamp{font-size:11px; color:var(--muted)}
-    .hint{font-size:12px; color:var(--muted)}
-    .footer{margin-top:12px; font-size:12px; color:var(--muted)}
-
-    @media (max-width: 900px){ .grid{grid-template-columns: 1fr; } }
-  </style>
+  <title>JAM Notes</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase (Auth + DB) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="brand"><div class="logo" aria-hidden="true"></div><h1>JAM Notes Tracker</h1></div>
-      <nav class="tabs" role="tablist" aria-label="Main">
-        <div class="tab active" data-tab="add" role="tab" aria-selected="true" tabindex="0">Add Note</div>
-        <div class="tab" data-tab="browse" role="tab" aria-selected="false" tabindex="0">Browse & Search</div>
-      </nav>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>JAM Notes</h1>
+      </div>
+      <div class="auth" aria-live="polite">
+        <span id="authStatus" class="hint">Not signed in</span>
+        <input id="authEmail" type="text" placeholder="email for login">
+        <button class="btn small secondary" id="sendLinkBtn">Send login link</button>
+        <button class="btn small" id="signOutBtn" style="display:none">Sign out</button>
+      </div>
     </header>
 
-    <section id="add" class="grid" role="tabpanel" aria-labelledby="tab-add">
+    <nav class="tabs" role="tablist" aria-label="Main">
+      <button class="tab active" data-tab="add" aria-selected="true">Add Note</button>
+      <button class="tab" data-tab="browse" aria-selected="false">Browse & Search</button>
+    </nav>
+
+    <!-- Add + Search -->
+    <section id="add" class="grid" role="tabpanel">
       <div class="card">
         <h2>Quick Add</h2>
         <div class="row">
           <div>
             <label for="title">Title</label>
-            <input id="title" type="text" placeholder="e.g. Definite integral with substitution" />
+            <input id="title" type="text" placeholder="e.g. Definite integral with substitution">
           </div>
           <div>
             <label for="qid">Question ID</label>
-            <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10" />
+            <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10">
           </div>
         </div>
         <div class="row">
           <div>
             <label for="topics">Topics (comma separated)</label>
-            <input id="topics" type="text" placeholder="e.g. Calculus, Substitution, Definite Integral" />
+            <input id="topics" type="text" placeholder="e.g. Calculus, Substitution, Definite Integral">
           </div>
           <div>
             <label for="refs">References / Links</label>
-            <input id="refs" type="text" placeholder="Books, videos, page numbers, URLs" />
+            <input id="refs" type="text" placeholder="Books, videos, page numbers, URLs">
           </div>
         </div>
         <div>
           <label for="body">Your note (how you solved it)</label>
-          <textarea id="body" placeholder="Write the full approach, formulas, traps, and final result..."></textarea>
+          <textarea id="body" placeholder="Write the approach, formulas, traps, and final result..."></textarea>
         </div>
         <div class="split">
-          <div class="hint">Pro tip: press <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
+          <div class="hint">Tip: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
           <div class="inline-actions">
             <button class="btn" id="saveBtn">Save Note</button>
-            <button class="btn secondary" id="resetBtn" title="Clear fields">Clear</button>
+            <button class="btn secondary" id="resetBtn">Clear</button>
           </div>
         </div>
-        <div class="footer">Notes are saved locally in your browser (localStorage). Use Export to back up.</div>
+        <div class="footer hint">Notes save to your account when signed in (and also to your browser as backup).</div>
       </div>
 
       <div class="card">
         <h2>Search (instant)</h2>
         <label for="q">Search by text, topic, or question ID</label>
-        <input id="q" type="search" placeholder="Type to search… (try: topic:Calculus  qid:2023  title:integration)"/>
+        <input id="q" type="search" placeholder="Type to search… (topic:Calculus  qid:2023  title:integration)">
         <div class="spacer"></div>
         <div id="results"></div>
       </div>
     </section>
 
-    <section id="browse" class="grid" style="display:none" role="tabpanel" aria-labelledby="tab-browse">
+    <!-- Browse + Tools -->
+    <section id="browse" class="grid" style="display:none" role="tabpanel">
       <div class="card">
         <h2>All Notes by Topic</h2>
         <div id="topicsCloud" class="chips" aria-live="polite"></div>
@@ -129,12 +87,12 @@
         <h2>Tools</h2>
         <div class="row">
           <button class="btn secondary" id="exportBtn">Export JSON</button>
-          <input type="file" id="importFile" accept="application/json" style="display:none" />
+          <input type="file" id="importFile" accept="application/json" style="display:none">
           <button class="btn secondary" id="importBtn">Import JSON</button>
-          <button class="btn warn" id="nukeBtn" title="Delete ALL notes">Delete All</button>
+          <button class="btn warn" id="nukeBtn">Delete All (local)</button>
         </div>
         <div class="spacer"></div>
-        <div class="hint">Export creates a .json backup of all your notes. Import merges by ID. Delete All clears the local database (cannot be undone).</div>
+        <div class="hint">Export/Import are manual backups of your notes. Cloud sync happens automatically when signed in.</div>
       </div>
     </section>
   </div>
@@ -153,213 +111,6 @@
     </div>
   </template>
 
-  <script>
-  // ===== Simple local database =====
-  const DB_KEY = 'jamnotes_v1';
-  /** @type {Array<{id:string,title:string,questionId:string,topics:string[],refs:string,body:string,createdAt:number,updatedAt:number}>} */
-  let db = [];
-  const load = () => { try { db = JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch { db = []; } };
-  const save = () => localStorage.setItem(DB_KEY, JSON.stringify(db));
-  const uid = () => 'N'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
-
-  // ===== Elements =====
-  const els = {
-    tabs:[...document.querySelectorAll('.tab')],
-    panels:{ add: document.getElementById('add'), browse: document.getElementById('browse') },
-    title: document.getElementById('title'), qid: document.getElementById('qid'), topics: document.getElementById('topics'), refs: document.getElementById('refs'), body: document.getElementById('body'),
-    saveBtn: document.getElementById('saveBtn'), resetBtn: document.getElementById('resetBtn'),
-    q: document.getElementById('q'), results: document.getElementById('results'),
-    topicsCloud: document.getElementById('topicsCloud'), topicList: document.getElementById('topicList'),
-    exportBtn: document.getElementById('exportBtn'), importBtn: document.getElementById('importBtn'), importFile: document.getElementById('importFile'), nukeBtn: document.getElementById('nukeBtn'),
-    tpl: document.getElementById('resultTpl')
-  };
-
-  // ===== Tabs =====
-  els.tabs.forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
-  els.tabs.forEach(t=>t.addEventListener('keydown',e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); switchTab(t.dataset.tab) } }));
-  function switchTab(name){
-    els.tabs.forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
-    Object.entries(els.panels).forEach(([k,sec])=>sec.style.display = (k===name)?'grid':'none');
-    if(name==='add') els.title.focus(); else renderTopicsView();
-  }
-
-  // ===== Save / Reset =====
-  function clearForm(){ els.title.value=''; els.qid.value=''; els.topics.value=''; els.refs.value=''; els.body.value=''; }
-  els.resetBtn.addEventListener('click', clearForm);
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.key==='Enter'){ e.preventDefault(); saveNote(); }});
-  els.saveBtn.addEventListener('click', saveNote);
-  function saveNote(editId=null){
-    const title = els.title.value.trim();
-    const questionId = els.qid.value.trim();
-    const topics = els.topics.value.split(',').map(s=>s.trim()).filter(Boolean);
-    const refs = els.refs.value.trim();
-    const body = els.body.value.trim();
-    if(!title && !body){ alert('Please add a title or some note text.'); return; }
-    const now = Date.now();
-    if(editId){
-      const idx = db.findIndex(n=>n.id===editId);
-      if(idx>-1){ db[idx] = {...db[idx], title, questionId, topics, refs, body, updatedAt: now}; }
-    } else {
-      db.unshift({ id: uid(), title, questionId, topics, refs, body, createdAt: now, updatedAt: now });
-    }
-    save();
-    clearForm();
-    renderSearch();
-    renderTopicsView();
-  }
-
-  // ===== Search =====
-  const deb = (fn,ms=150)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); } };
-  els.q.addEventListener('input', deb(renderSearch, 120));
-
-  function tokenizeQuery(q){
-    const tokens = { text:[], topic:[], qid:[], title:[] };
-    q.split(/\s+/).forEach(p=>{
-      if(p.startsWith('topic:')) tokens.topic.push(p.slice(6).toLowerCase());
-      else if(p.startsWith('qid:')) tokens.qid.push(p.slice(4).toLowerCase());
-      else if(p.startsWith('title:')) tokens.title.push(p.slice(6).toLowerCase());
-      else if(p) tokens.text.push(p.toLowerCase());
-    });
-    return tokens;
-  }
-
-  function matches(note, tokens){
-    const hay = (note.title+' '+note.questionId+' '+note.refs+' '+note.body+' '+note.topics.join(' ')).toLowerCase();
-    const titleHay = note.title.toLowerCase();
-    if(tokens.text.length && !tokens.text.every(t=>hay.includes(t))) return false;
-    if(tokens.title.length && !tokens.title.every(t=>titleHay.includes(t))) return false;
-    if(tokens.qid.length && !tokens.qid.every(t=>note.questionId.toLowerCase().includes(t))) return false;
-    if(tokens.topic.length && !tokens.topic.every(t=>note.topics.map(s=>s.toLowerCase()).some(x=>x.includes(t)))) return false;
-    return true;
-  }
-
-  function renderSearch(){
-    const q = els.q.value.trim();
-    const tokens = tokenizeQuery(q);
-    const results = (!q? db.slice(0,20) : db.filter(n=>matches(n,tokens))).slice(0,100);
-    els.results.innerHTML = '';
-    if(results.length===0){ els.results.innerHTML = `<div class="empty">No matches. Try keywords, <b>topic:Algebra</b> or <b>qid:2023</b>.</div>`; return; }
-    results.forEach(n=>els.results.appendChild(renderCard(n)));
-  }
-
-  function renderCard(n){
-    const node = els.tpl.content.firstElementChild.cloneNode(true);
-    node.dataset.id = n.id;
-    node.querySelector('h3').textContent = n.title || '(untitled)';
-    const meta = node.querySelector('.meta');
-    meta.innerHTML = '';
-    const span = (label,val)=>{ const s=document.createElement('span'); s.textContent = `${label}: ${val}`; return s; };
-    if(n.questionId) meta.appendChild(span('QID', n.questionId));
-    if(n.topics?.length) meta.appendChild(span('Topics', n.topics.join(', ')));
-    if(n.refs) meta.appendChild(span('Refs', n.refs));
-    const ts = document.createElement('div'); ts.className='timestamp'; ts.textContent = `Saved ${new Date(n.updatedAt).toLocaleString()}`; meta.appendChild(ts);
-
-    const text = node.querySelector('.text');
-    text.innerHTML = linkify(escapeHtml(n.body || ''));
-
-    node.querySelector('.edit').addEventListener('click',()=>startEdit(n.id));
-    node.querySelector('.del').addEventListener('click',()=>deleteNote(n.id));
-    return node;
-  }
-
-  function escapeHtml(s){
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-  function linkify(s){
-    return s.replace(/(https?:\/\/[^\s)]+)(?![^<]*>)/g, '<a href="$1" target="_blank" rel="noopener">$1<\/a>');
-  }
-
-  function startEdit(id){
-    const n = db.find(x=>x.id===id); if(!n) return;
-    switchTab('add');
-    els.title.value = n.title; els.qid.value = n.questionId; els.topics.value = (n.topics||[]).join(', '); els.refs.value = n.refs; els.body.value = n.body;
-    // Convert Save button to Update for this session
-    els.saveBtn.textContent = 'Update Note';
-    const handler = ()=>{ saveNote(n.id); els.saveBtn.textContent = 'Save Note'; els.saveBtn.removeEventListener('click', handler); };
-    els.saveBtn.removeEventListener('click', saveNote); // prevent double binding in rare cases
-    els.saveBtn.addEventListener('click', handler, { once:true });
-  }
-
-  function deleteNote(id){
-    if(!confirm('Delete this note?')) return;
-    db = db.filter(n=>n.id!==id); save(); renderSearch(); renderTopicsView();
-  }
-
-  // ===== Topics view =====
-  function allTopics(){
-    const map = new Map();
-    db.forEach(n=> (n.topics||[]).forEach(t=>{ const k=t.trim(); if(!k) return; map.set(k, (map.get(k)||0)+1); }));
-    return [...map.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]));
-  }
-
-  function renderTopicsView(selectedTopic=null){
-    // Chips
-    const topics = allTopics();
-    els.topicsCloud.innerHTML='';
-    const mkChip=(label, count, active=false)=>{
-      const c=document.createElement('div'); c.className='chip btn'; c.setAttribute('role','button'); c.tabIndex=0;
-      c.textContent = count? `${label} (${count})` : label;
-      if(active) c.style.outline='2px solid var(--accent)';
-      c.addEventListener('click',()=>renderTopicsView(label==='All Topics'?null:label));
-      c.addEventListener('keydown',e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); c.click(); } });
-      return c;
-    };
-    els.topicsCloud.appendChild(mkChip('All Topics', db.length, selectedTopic==null));
-    topics.forEach(([t,c])=> els.topicsCloud.appendChild(mkChip(t,c, selectedTopic===t)) );
-
-    // Groups
-    els.topicList.innerHTML='';
-    const groups = new Map();
-    db.forEach(n=>{
-      const list = (selectedTopic? (n.topics||[]).includes(selectedTopic) : (n.topics?.length? n.topics : ['(untagged)']))
-        ? (n.topics?.length? n.topics : ['(untagged)']) : [];
-      list.forEach(t=>{
-        if(selectedTopic && t!==selectedTopic) return; // strict when filtered
-        if(!groups.has(t)) groups.set(t, []);
-        groups.get(t).push(n);
-      });
-    });
-
-    [...groups.keys()].sort((a,b)=> a.localeCompare(b)).forEach(topic=>{
-      const cont = document.createElement('div'); cont.className='topic-group';
-      const title = document.createElement('div'); title.className='topic-title'; title.textContent = topic; cont.appendChild(title);
-      (groups.get(topic)||[]).sort((a,b)=> b.updatedAt-a.updatedAt).forEach(n=> cont.appendChild(renderCard(n)) );
-      els.topicList.appendChild(cont);
-    });
-
-    if(groups.size===0){ els.topicList.innerHTML = '<div class="empty">No notes yet. Add some from the <b>Add Note</b> tab.</div>'; }
-  }
-
-  // ===== Export / Import / Nuke =====
-  els.exportBtn.addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify({ version:1, exportedAt:Date.now(), notes:db }, null, 2)], {type:'application/json'});
-    const a=document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `jam-notes-${new Date().toISOString().slice(0,10)}.json`; a.click();
-    URL.revokeObjectURL(a.href);
-  });
-  els.importBtn.addEventListener('click', ()=> els.importFile.click());
-  els.importFile.addEventListener('change', async (e)=>{
-    const file = e.target.files?.[0]; if(!file) return;
-    const text = await file.text();
-    try{ const json = JSON.parse(text); const incoming = json.notes || json || [];
-      const byId = new Map(db.map(n=>[n.id,n]));
-      incoming.forEach(n=>{ if(byId.has(n.id)){ Object.assign(byId.get(n.id), n); } else { db.push(n); } });
-      // Normalize missing fields
-      db = db.map(n=>({ id:n.id||uid(), title:n.title||'', questionId:n.questionId||'', topics:(n.topics||[]).map(t=>String(t)), refs:n.refs||'', body:n.body||'', createdAt:n.createdAt||Date.now(), updatedAt:n.updatedAt||Date.now() }));
-      // sort newest first
-      db.sort((a,b)=> b.updatedAt-a.updatedAt);
-      save(); renderSearch(); renderTopicsView(); alert('Import complete');
-    }catch(err){ alert('Import failed: '+err.message); }
-    e.target.value = '';
-  });
-  els.nukeBtn.addEventListener('click', ()=>{
-    if(prompt('Type DELETE to confirm clearing ALL notes:')==='DELETE'){ db=[]; save(); renderSearch(); renderTopicsView(); }
-  });
-
-  // ===== Init =====
-  load();
-  renderSearch();
-  renderTopicsView();
-
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
