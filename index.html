@@ -5,135 +5,105 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>JAM Notes</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <div class="logo">🧠</div>
+  <header class="header">
+    <div class="logo">
+      <img src="https://cdn-icons-png.flaticon.com/512/854/854894.png" alt="logo" />
       <h1>JAM Notes</h1>
     </div>
-
     <div class="auth">
-      <div class="auth-fields" id="auth-fields">
-        <input type="email" id="email" placeholder="Email" autocomplete="email" />
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
-        <button id="btn-signup" class="btn secondary">Sign Up</button>
-        <button id="btn-login" class="btn primary">Login</button>
+      <div id="auth-fields">
+        <input id="email" type="email" placeholder="Email" />
+        <input id="password" type="password" placeholder="Password" />
+        <button id="btn-signup">Sign Up</button>
+        <button id="btn-login" class="primary">Login</button>
       </div>
-      <div class="auth-session hidden" id="auth-session">
-        <span id="session-email">Signed in as —</span>
-        <button id="btn-logout" class="btn danger">Logout</button>
+      <div id="auth-session" class="hidden">
+        <span id="session-email"></span>
+        <button id="btn-logout" class="danger">Logout</button>
       </div>
     </div>
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="add-note">Add Note</button>
-    <button class="tab" data-tab="browse-search">Browse & Search</button>
-    <button class="tab" data-tab="ai-chat">AI Chat Assistant</button>
+    <button class="tab active" data-tab="notes">Notes</button>
+    <button class="tab" data-tab="chat">AI Chat</button>
   </nav>
 
-  <!-- Add Note -->
-  <section id="add-note" class="tab-panel active">
-    <div class="card">
-      <div class="row">
+  <!-- Main workspace -->
+  <section id="notes" class="tab-panel active">
+    <div class="workspace">
+      <!-- Left: Quick Add -->
+      <div class="panel left">
+        <h2>Quick Add</h2>
         <label>Title</label>
-        <input id="note-title" placeholder="Short descriptive title" />
-      </div>
-
-      <div class="row grid-3">
-        <div>
-          <label>Question IDs (comma-separated)</label>
-          <input id="note-qids" placeholder="e.g. Q23, Q24" />
-        </div>
-        <div>
-          <label>Topics (comma-separated)</label>
-          <input id="note-topics" placeholder="e.g. Sequences, Complex Numbers" />
-        </div>
-        <div>
-          <label>References / Links</label>
-          <input id="note-refs" placeholder="Paste URLs or short refs" />
-        </div>
-      </div>
-
-      <div class="row">
-        <label>Body (Explanation / Steps / Solution)</label>
-        <textarea id="note-body" rows="12" placeholder="Write your full note here..."></textarea>
-      </div>
-
-      <div class="actions">
-        <button id="btn-save-note" class="btn primary">Save Note (Ctrl/Cmd + Enter)</button>
-        <button id="btn-clear-form" class="btn secondary">Clear Form</button>
-        <span id="note-status" class="muted"></span>
-      </div>
-      <input type="hidden" id="note-id" />
-    </div>
-  </section>
-
-  <!-- Browse & Search -->
-  <section id="browse-search" class="tab-panel">
-    <div class="search-bar card">
-      <input id="search-input" placeholder="Search…  (supports topic:<kw>  qid:<id>  title:<word>  or plain text)" />
-      <div class="chips" id="topic-chips"></div>
-      <div class="tools">
-        <details>
-          <summary>Tools</summary>
-          <div class="tools-grid">
-            <button id="btn-export" class="btn">Export Notes (JSON)</button>
-            <label class="file-btn">
-              Import Notes (JSON)
-              <input id="import-input" type="file" accept=".json" hidden />
-            </label>
-            <button id="btn-delete-all" class="btn danger">Delete All (notes + chat)</button>
+        <input id="note-title" placeholder="e.g. Definite integral with substitution" />
+        <div class="grid2">
+          <div>
+            <label>Topics (comma separated)</label>
+            <input id="note-topics" placeholder="e.g. Calculus, Substitution" />
           </div>
-        </details>
+          <div>
+            <label>Question ID</label>
+            <input id="note-qids" placeholder="e.g. PY-2023-Set1-Q10" />
+          </div>
+        </div>
+        <div class="grid2">
+          <div>
+            <label>References / Links</label>
+            <input id="note-refs" placeholder="Books, videos, URLs" />
+          </div>
+        </div>
+        <label>Your note (how you solved it)</label>
+        <textarea id="note-body" rows="10" placeholder="Write the approach, formulas, traps, and result..."></textarea>
+        <div class="actions">
+          <button id="btn-save-note" class="primary">Save Note</button>
+          <button id="btn-clear-form">Clear</button>
+        </div>
+        <p class="muted">Tip: <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to save</p>
+        <p id="note-status" class="muted"></p>
+      </div>
+
+      <!-- Right: Search -->
+      <div class="panel right">
+        <h2>Search (instant)</h2>
+        <input id="search-input" placeholder="Search by text, topic, or question ID" />
+        <p class="muted small">Try <code>topic:Algebra</code> or <code>qid:2023</code></p>
+        <div id="topic-chips" class="chips"></div>
+        <div id="notes-list" class="notes-list"></div>
       </div>
     </div>
-
-    <div id="notes-list" class="notes-list"></div>
   </section>
 
-  <!-- AI Chat Assistant -->
-  <section id="ai-chat" class="tab-panel">
-    <div class="card">
-      <div class="row grid-3">
-        <div>
-          <label>Topic</label>
-          <input id="chat-topic" placeholder="e.g. Linear Algebra / Matrices" />
-        </div>
-        <div>
-          <label>Gemini API Key</label>
-          <input id="gemini-key" placeholder="Paste your Gemini API key (kept in memory only)" />
-        </div>
-        <div class="align-end">
-          <button id="btn-load-chat" class="btn">Load Topic History</button>
-          <button id="btn-clear-chat" class="btn danger">Clear Topic History</button>
-        </div>
+  <!-- Chat tab -->
+  <section id="chat" class="tab-panel">
+    <div class="chat-wrap">
+      <h2>AI Chat Assistant</h2>
+      <div class="chat-header">
+        <input id="chat-topic" placeholder="Topic (e.g. Linear Algebra)" />
+        <button id="btn-load-chat">Load History</button>
+        <button id="btn-clear-chat" class="danger">Clear Topic</button>
       </div>
-
       <div id="chat-window" class="chat-window"></div>
-
-      <div class="chat-input">
-        <textarea id="chat-message" rows="3" placeholder="Ask a concept, derivation, or ‘why’ question…"></textarea>
-        <button id="btn-send" class="btn primary">Send</button>
-      </div>
       <div id="typing" class="typing hidden">Gemini is thinking…</div>
+      <div class="chat-input">
+        <textarea id="chat-message" rows="3" placeholder="Ask a concept or derivation question..."></textarea>
+        <button id="btn-send" class="primary">Send</button>
+      </div>
     </div>
   </section>
 
   <footer class="footer">
     <span>© 2025 JAM Notes</span>
-    <span class="tiny">Dark theme · Realtime · Supabase + Gemini</span>
+    <span>Powered by Supabase + Gemini</span>
   </footer>
 
   <script>
-    // ====== CONFIG: paste your Supabase project details here ======
-    const SUPABASE_URL = "https://bgxxtdznrxuqncnxnnsd.supabase.co"; // <- paste
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneHh0ZHpucnh1cW5jbnhubnNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTg5MzEsImV4cCI6MjA3NjY5NDkzMX0.scFPvXFDJnKjgL0j3sHU3csmamMAqBtDFG0FRvCr9uk"; // <- paste
+    const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
   </script>
   <script src="script.js"></script>
 </body>
 </html>
-
