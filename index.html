@@ -2,118 +2,137 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>JAM Notes</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Supabase (Auth + DB) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <h1>JAM Notes</h1>
-      </div>
-      <div class="auth" aria-live="polite">
-        <span id="authStatus" class="hint">Not signed in</span>
-        <input id="authEmail" type="text" placeholder="email for login">
-        <button class="btn small secondary" id="sendLinkBtn">Send login link</button>
-        <button class="btn small" id="signOutBtn" style="display:none">Sign out</button>
-      </div>
-    </header>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">🧠</div>
+      <h1>JAM Notes</h1>
+    </div>
 
-    <nav class="tabs" role="tablist" aria-label="Main">
-      <button class="tab active" data-tab="add" aria-selected="true">Add Note</button>
-      <button class="tab" data-tab="browse" aria-selected="false">Browse & Search</button>
-    </nav>
-
-    <!-- Add + Search -->
-    <section id="add" class="grid" role="tabpanel">
-      <div class="card">
-        <h2>Quick Add</h2>
-        <div class="row">
-          <div>
-            <label for="title">Title</label>
-            <input id="title" type="text" placeholder="e.g. Definite integral with substitution">
-          </div>
-          <div>
-            <label for="qid">Question ID</label>
-            <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10">
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="topics">Topics (comma separated)</label>
-            <input id="topics" type="text" placeholder="e.g. Calculus, Substitution, Definite Integral">
-          </div>
-          <div>
-            <label for="refs">References / Links</label>
-            <input id="refs" type="text" placeholder="Books, videos, page numbers, URLs">
-          </div>
-        </div>
-        <div>
-          <label for="body">Your note (how you solved it)</label>
-          <textarea id="body" placeholder="Write the approach, formulas, traps, and final result..."></textarea>
-        </div>
-        <div class="split">
-          <div class="hint">Tip: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
-          <div class="inline-actions">
-            <button class="btn" id="saveBtn">Save Note</button>
-            <button class="btn secondary" id="resetBtn">Clear</button>
-          </div>
-        </div>
-        <div class="footer hint">Notes save to your account when signed in (and also to your browser as backup).</div>
+    <div class="auth">
+      <div class="auth-fields" id="auth-fields">
+        <input type="email" id="email" placeholder="Email" autocomplete="email" />
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+        <button id="btn-signup" class="btn secondary">Sign Up</button>
+        <button id="btn-login" class="btn primary">Login</button>
       </div>
-
-      <div class="card">
-        <h2>Search (instant)</h2>
-        <label for="q">Search by text, topic, or question ID</label>
-        <input id="q" type="search" placeholder="Type to search… (topic:Calculus  qid:2023  title:integration)">
-        <div class="spacer"></div>
-        <div id="results"></div>
-      </div>
-    </section>
-
-    <!-- Browse + Tools -->
-    <section id="browse" class="grid" style="display:none" role="tabpanel">
-      <div class="card">
-        <h2>All Notes by Topic</h2>
-        <div id="topicsCloud" class="chips" aria-live="polite"></div>
-        <div class="spacer"></div>
-        <div class="list" id="topicList"></div>
-      </div>
-      <div class="card">
-        <h2>Tools</h2>
-        <div class="row">
-          <button class="btn secondary" id="exportBtn">Export JSON</button>
-          <input type="file" id="importFile" accept="application/json" style="display:none">
-          <button class="btn secondary" id="importBtn">Import JSON</button>
-          <button class="btn warn" id="nukeBtn">Delete All (local)</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="hint">Export/Import are manual backups of your notes. Cloud sync happens automatically when signed in.</div>
-      </div>
-    </section>
-  </div>
-
-  <template id="resultTpl">
-    <div class="result" data-id="">
-      <h3></h3>
-      <div class="meta"></div>
-      <div class="spacer"></div>
-      <div class="text"></div>
-      <div class="spacer"></div>
-      <div class="inline-actions">
-        <button class="btn small secondary edit">Edit</button>
-        <button class="btn small warn del">Delete</button>
+      <div class="auth-session hidden" id="auth-session">
+        <span id="session-email">Signed in as —</span>
+        <button id="btn-logout" class="btn danger">Logout</button>
       </div>
     </div>
-  </template>
+  </header>
 
-  <!-- at the very end of index.html -->
-  <script defer src="script.js"></script>
+  <nav class="tabs">
+    <button class="tab active" data-tab="add-note">Add Note</button>
+    <button class="tab" data-tab="browse-search">Browse & Search</button>
+    <button class="tab" data-tab="ai-chat">AI Chat Assistant</button>
+  </nav>
 
+  <!-- Add Note -->
+  <section id="add-note" class="tab-panel active">
+    <div class="card">
+      <div class="row">
+        <label>Title</label>
+        <input id="note-title" placeholder="Short descriptive title" />
+      </div>
+
+      <div class="row grid-3">
+        <div>
+          <label>Question IDs (comma-separated)</label>
+          <input id="note-qids" placeholder="e.g. Q23, Q24" />
+        </div>
+        <div>
+          <label>Topics (comma-separated)</label>
+          <input id="note-topics" placeholder="e.g. Sequences, Complex Numbers" />
+        </div>
+        <div>
+          <label>References / Links</label>
+          <input id="note-refs" placeholder="Paste URLs or short refs" />
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Body (Explanation / Steps / Solution)</label>
+        <textarea id="note-body" rows="12" placeholder="Write your full note here..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button id="btn-save-note" class="btn primary">Save Note (Ctrl/Cmd + Enter)</button>
+        <button id="btn-clear-form" class="btn secondary">Clear Form</button>
+        <span id="note-status" class="muted"></span>
+      </div>
+      <input type="hidden" id="note-id" />
+    </div>
+  </section>
+
+  <!-- Browse & Search -->
+  <section id="browse-search" class="tab-panel">
+    <div class="search-bar card">
+      <input id="search-input" placeholder="Search…  (supports topic:<kw>  qid:<id>  title:<word>  or plain text)" />
+      <div class="chips" id="topic-chips"></div>
+      <div class="tools">
+        <details>
+          <summary>Tools</summary>
+          <div class="tools-grid">
+            <button id="btn-export" class="btn">Export Notes (JSON)</button>
+            <label class="file-btn">
+              Import Notes (JSON)
+              <input id="import-input" type="file" accept=".json" hidden />
+            </label>
+            <button id="btn-delete-all" class="btn danger">Delete All (notes + chat)</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div id="notes-list" class="notes-list"></div>
+  </section>
+
+  <!-- AI Chat Assistant -->
+  <section id="ai-chat" class="tab-panel">
+    <div class="card">
+      <div class="row grid-3">
+        <div>
+          <label>Topic</label>
+          <input id="chat-topic" placeholder="e.g. Linear Algebra / Matrices" />
+        </div>
+        <div>
+          <label>Gemini API Key</label>
+          <input id="gemini-key" placeholder="Paste your Gemini API key (kept in memory only)" />
+        </div>
+        <div class="align-end">
+          <button id="btn-load-chat" class="btn">Load Topic History</button>
+          <button id="btn-clear-chat" class="btn danger">Clear Topic History</button>
+        </div>
+      </div>
+
+      <div id="chat-window" class="chat-window"></div>
+
+      <div class="chat-input">
+        <textarea id="chat-message" rows="3" placeholder="Ask a concept, derivation, or ‘why’ question…"></textarea>
+        <button id="btn-send" class="btn primary">Send</button>
+      </div>
+      <div id="typing" class="typing hidden">Gemini is thinking…</div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>© 2025 JAM Notes</span>
+    <span class="tiny">Dark theme · Realtime · Supabase + Gemini</span>
+  </footer>
+
+  <script>
+    // ====== CONFIG: paste your Supabase project details here ======
+    const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co"; // <- paste
+    const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY"; // <- paste
+  </script>
+  <script src="script.js"></script>
 </body>
 </html>
-
