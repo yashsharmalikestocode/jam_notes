@@ -2,109 +2,128 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>JAM Notes</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="logo">
-      <img src="https://cdn-icons-png.flaticon.com/512/854/854894.png" alt="logo" />
-      <h1>JAM Notes</h1>
-    </div>
-    <div class="auth">
-      <div id="auth-fields">
-        <input id="email" type="email" placeholder="Email" />
-        <input id="password" type="password" placeholder="Password" />
-        <button id="btn-signup">Sign Up</button>
-        <button id="btn-login" class="primary">Login</button>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>JAM Notes</h1>
       </div>
-      <div id="auth-session" class="hidden">
-        <span id="session-email"></span>
-        <button id="btn-logout" class="danger">Logout</button>
+
+      <!-- Auth area (kept compact to preserve your visuals) -->
+      <div class="auth" id="auth-area">
+        <div id="auth-fields">
+          <input id="email" type="email" placeholder="Email" autocomplete="email">
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+          <button class="btn secondary" id="btn-signup">Sign Up</button>
+          <button class="btn" id="btn-login">Login</button>
+        </div>
+        <div id="auth-session" class="hidden">
+          <span id="session-email" class="muted"></span>
+          <button class="btn warn" id="btn-logout">Logout</button>
+        </div>
       </div>
-    </div>
-  </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="notes">Notes</button>
-    <button class="tab" data-tab="chat">AI Chat</button>
-  </nav>
+      <nav class="tabs" role="tablist" aria-label="Main">
+        <button class="tab active" data-tab="add" aria-selected="true">Add Note</button>
+        <button class="tab" data-tab="browse" aria-selected="false">Browse & Search</button>
+      </nav>
+    </header>
 
-  <!-- Main workspace -->
-  <section id="notes" class="tab-panel active">
-    <div class="workspace">
-      <!-- Left: Quick Add -->
-      <div class="panel left">
+    <!-- ADD NOTE -->
+    <section id="add" class="grid" role="tabpanel">
+      <div class="card">
         <h2>Quick Add</h2>
-        <label>Title</label>
-        <input id="note-title" placeholder="e.g. Definite integral with substitution" />
-        <div class="grid2">
+        <div class="row">
           <div>
-            <label>Topics (comma separated)</label>
-            <input id="note-topics" placeholder="e.g. Calculus, Substitution" />
+            <label for="title">Title</label>
+            <input id="title" type="text" placeholder="e.g. Definite integral with substitution">
           </div>
           <div>
-            <label>Question ID</label>
-            <input id="note-qids" placeholder="e.g. PY-2023-Set1-Q10" />
+            <label for="qid">Question ID</label>
+            <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10">
           </div>
         </div>
-        <div class="grid2">
+        <div class="row">
           <div>
-            <label>References / Links</label>
-            <input id="note-refs" placeholder="Books, videos, URLs" />
+            <label for="topics">Topics (comma separated)</label>
+            <input id="topics" type="text" placeholder="e.g. Calculus, Substitution">
+          </div>
+          <div>
+            <label for="refs">References / Links</label>
+            <input id="refs" type="text" placeholder="Books, videos, URLs">
           </div>
         </div>
-        <label>Your note (how you solved it)</label>
-        <textarea id="note-body" rows="10" placeholder="Write the approach, formulas, traps, and result..."></textarea>
-        <div class="actions">
-          <button id="btn-save-note" class="primary">Save Note</button>
-          <button id="btn-clear-form">Clear</button>
+        <div>
+          <label for="body">Your note (how you solved it)</label>
+          <textarea id="body" placeholder="Write the approach, formulas, traps, and result..."></textarea>
         </div>
-        <p class="muted">Tip: <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to save</p>
-        <p id="note-status" class="muted"></p>
+        <div class="split">
+          <div class="hint">Tip: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
+          <div class="inline-actions">
+            <button class="btn" id="saveBtn">Save Note</button>
+            <button class="btn secondary" id="resetBtn">Clear</button>
+          </div>
+        </div>
+        <div id="saveStatus" class="hint"></div>
       </div>
 
-      <!-- Right: Search -->
-      <div class="panel right">
+      <div class="card">
         <h2>Search (instant)</h2>
-        <input id="search-input" placeholder="Search by text, topic, or question ID" />
-        <p class="muted small">Try <code>topic:Algebra</code> or <code>qid:2023</code></p>
-        <div id="topic-chips" class="chips"></div>
-        <div id="notes-list" class="notes-list"></div>
+        <label for="q">Search by text, topic, or question ID</label>
+        <input id="q" type="search" placeholder="Type to search… (topic:Calculus  qid:2023  title:integration)">
+        <div class="spacer"></div>
+        <div id="results"></div>
+      </div>
+    </section>
+
+    <!-- BROWSE -->
+    <section id="browse" class="grid" style="display:none" role="tabpanel">
+      <div class="card">
+        <h2>All Notes by Topic</h2>
+        <div id="topicsCloud" class="chips" aria-live="polite"></div>
+        <div class="spacer"></div>
+        <div class="list" id="topicList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Tools</h2>
+        <div class="row">
+          <button class="btn secondary" id="exportBtn">Export JSON</button>
+          <input type="file" id="importFile" accept="application/json" hidden>
+          <button class="btn secondary" id="importBtn">Import JSON</button>
+          <button class="btn warn" id="nukeBtn">Delete All</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="hint small">Cloud sync only (Supabase). No local storage.</div>
+      </div>
+    </section>
+  </div>
+
+  <template id="resultTpl">
+    <div class="result" data-id="">
+      <h3></h3>
+      <div class="meta"></div>
+      <div class="spacer"></div>
+      <div class="text"></div>
+      <div class="spacer"></div>
+      <div class="inline-actions">
+        <button class="btn small secondary edit">Edit</button>
+        <button class="btn small warn del">Delete</button>
       </div>
     </div>
-  </section>
-
-  <!-- Chat tab -->
-  <section id="chat" class="tab-panel">
-    <div class="chat-wrap">
-      <h2>AI Chat Assistant</h2>
-      <div class="chat-header">
-        <input id="chat-topic" placeholder="Topic (e.g. Linear Algebra)" />
-        <button id="btn-load-chat">Load History</button>
-        <button id="btn-clear-chat" class="danger">Clear Topic</button>
-      </div>
-      <div id="chat-window" class="chat-window"></div>
-      <div id="typing" class="typing hidden">Gemini is thinking…</div>
-      <div class="chat-input">
-        <textarea id="chat-message" rows="3" placeholder="Ask a concept or derivation question..."></textarea>
-        <button id="btn-send" class="primary">Send</button>
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer">
-    <span>© 2025 JAM Notes</span>
-    <span>Powered by Supabase + Gemini</span>
-  </footer>
+  </template>
 
   <script>
+    /* ===== Supabase config (paste yours) ===== */
     const SUPABASE_URL = "https://bgxxtdznrxuqncnxnnsd.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneHh0ZHpucnh1cW5jbnhubnNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTg5MzEsImV4cCI6MjA3NjY5NDkzMX0.scFPvXFDJnKjgL0j3sHU3csmamMAqBtDFG0FRvCr9uk";
   </script>
   <script src="script.js"></script>
 </body>
 </html>
-
