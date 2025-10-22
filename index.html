@@ -15,15 +15,16 @@
         <h1>JAM Notes</h1>
       </div>
 
-      <!-- Auth area (kept compact to preserve your visuals) -->
-      <div class="auth" id="auth-area">
-        <div id="auth-fields">
+      <!-- Auth: exactly one group is visible via CSS state classes -->
+      <div class="auth logged-out" id="auth">
+        <div id="auth-fields" class="group">
           <input id="email" type="email" placeholder="Email" autocomplete="email">
           <input id="password" type="password" placeholder="Password" autocomplete="current-password">
           <button class="btn secondary" id="btn-signup">Sign Up</button>
           <button class="btn" id="btn-login">Login</button>
         </div>
-        <div id="auth-session" class="hidden">
+
+        <div id="auth-session" class="group">
           <span id="session-email" class="muted"></span>
           <button class="btn warn" id="btn-logout">Logout</button>
         </div>
@@ -120,7 +121,7 @@
   </template>
 
   <script>
-    /* ===== Supabase config (paste yours) ===== */
+    /* Supabase config — paste yours */
     const SUPABASE_URL = "https://bgxxtdznrxuqncnxnnsd.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneHh0ZHpucnh1cW5jbnhubnNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTg5MzEsImV4cCI6MjA3NjY5NDkzMX0.scFPvXFDJnKjgL0j3sHU3csmamMAqBtDFG0FRvCr9uk";
   </script>
