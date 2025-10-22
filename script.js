@@ -1,74 +1,95 @@
-/* JAM Notes — Supabase email+password auth + cloud notes
-   Visuals follow your provided template exactly. No local storage. */
+/* ===========================
+   JAM Notes — Supabase Cloud Version
+   Matches new HTML & CSS (two-panel layout)
+   Tabs: Add Note / Browse & Search
+   =========================== */
 
+// ---------- Supabase init ----------
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ------------ State ------------ */
+// ---------- State ----------
 let currentUser = null;
-let allNotes = [];              // in-memory only (no localStorage)
-let currentEditingId = null;    // which note we are editing
-let debounceHandle = null;
-let activeChip = null;
+let allNotes = [];
+let activeTopicFilter = null;
+let debounceTimer = null;
 
-/* ------------ Shortcuts ------------ */
-const $  = (s) => document.querySelector(s);
-const $$ = (s) => Array.from(document.querySelectorAll(s));
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const uid  = () => "note_" + crypto.randomUUID();
+// ---------- Shortcuts ----------
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function esc(s){return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");}
-function linkify(t){
-  return (t||"").replace(/(https?:\/\/[^\s)]+)|(www\.[^\s)]+)/g, m => {
+function uuid() {
+  return "note_" + crypto.randomUUID();
+}
+
+function linkify(text) {
+  const urlRegex = /(https?:\/\/[^\s)]+)|(www\.[^\s)]+)/gim;
+  return (text || "").replace(urlRegex, (m) => {
     const href = m.startsWith("http") ? m : `https://${m}`;
-    return `<a class="inline" href="${href}" target="_blank" rel="noopener">${m}</a>`;
+    return `<a class="inline" target="_blank" rel="noopener" href="${href}">${m}</a>`;
   });
 }
-function parseCSV(s){return !s?[]:s.split(",").map(x=>x.trim()).filter(Boolean);}
 
-/* ------------ Tabs ------------ */
-(function initTabs(){
-  $$(".tab").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      $$(".tab").forEach(b=>b.classList.remove("active"));
+function parseComma(s) {
+  if (!s) return [];
+  return s.split(",").map((x) => x.trim()).filter(Boolean);
+}
+
+function escapeHtml(s) {
+  return (s || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replaceAll("'", "&#39;");
+}
+
+// ---------- Tabs ----------
+(function initTabs() {
+  const tabs = $$(".tab");
+  tabs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tabs.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      const tab = btn.dataset.tab;
-      $$("#add, #browse").forEach(() => {});
-      $("#add").style.display    = tab==="add"    ? "" : "none";
-      $("#browse").style.display = tab==="browse" ? "" : "none";
+      const name = btn.dataset.tab;
+      $("#add").style.display = name === "add" ? "" : "none";
+      $("#browse").style.display = name === "browse" ? "" : "none";
     });
   });
 })();
 
-/* ------------ Auth UI ------------ */
-async function refreshSessionUI(){
+// ---------- Auth ----------
+async function refreshSessionUI() {
   const { data } = await supabase.auth.getSession();
-  currentUser = data.session?.user ?? null;
+  const session = data.session;
+  currentUser = session?.user ?? null;
 
   $("#auth-fields").classList.toggle("hidden", !!currentUser);
   $("#auth-session").classList.toggle("hidden", !currentUser);
 
-  if (currentUser){
+  if (currentUser) {
     $("#session-email").textContent = `Signed in as ${currentUser.email}`;
-    await bootAfterLogin();
+    await afterLoginBoot();
   } else {
     $("#session-email").textContent = "";
-    teardownRealtime();
     allNotes = [];
-    renderSearchResults([]);
-    renderTopicGroups([]);
+    renderResults([]);
+    teardownRealtime();
   }
 }
 
-$("#btn-signup").addEventListener("click", async ()=>{
+$("#btn-signup").addEventListener("click", async () => {
   const email = $("#email").value.trim();
   const password = $("#password").value;
-  if(!email || !password) return alert("Email and password required.");
+  if (!email || !password) return alert("Email & password required.");
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) return alert(error.message);
-  alert("Sign up OK. Confirm email if required, then login.");
+  alert("Sign up successful. Please check your email and then log in.");
 });
 
-$("#btn-login").addEventListener("click", async ()=>{
+$("#btn-login").addEventListener("click", async () => {
   const email = $("#email").value.trim();
   const password = $("#password").value;
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -76,283 +97,346 @@ $("#btn-login").addEventListener("click", async ()=>{
   await refreshSessionUI();
 });
 
-$("#btn-logout").addEventListener("click", async ()=>{
+$("#btn-logout").addEventListener("click", async () => {
   await supabase.auth.signOut();
   await refreshSessionUI();
 });
 
-supabase.auth.onAuthStateChange(()=>refreshSessionUI());
+supabase.auth.onAuthStateChange(() => refreshSessionUI());
 
-/* ------------ Realtime ------------ */
-let notesChannel = null;
+// ---------- After login ----------
+let notesSubscription = null;
 
-function setupRealtime(){
+async function afterLoginBoot() {
+  await loadNotes();
+  buildTopicChips(allNotes);
+  renderTopicList(allNotes);
+  setupRealtime();
+}
+
+// ---------- Realtime ----------
+function setupRealtime() {
   teardownRealtime();
-  notesChannel = supabase
-    .channel("notes-rt")
-    .on("postgres_changes",
-      { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${currentUser.id}` },
-      payload => {
-        if (payload.eventType === "INSERT"){
+  notesSubscription = supabase
+    .channel("notes-realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "notes",
+        filter: `user_id=eq.${currentUser.id}`,
+      },
+      (payload) => {
+        if (payload.eventType === "INSERT") {
           allNotes.unshift(payload.new);
-        } else if (payload.eventType === "UPDATE"){
-          const i = allNotes.findIndex(n=>n.id===payload.new.id);
-          if (i>-1) allNotes[i] = payload.new;
-        } else if (payload.eventType === "DELETE"){
-          allNotes = allNotes.filter(n=>n.id!==payload.old.id);
+        } else if (payload.eventType === "UPDATE") {
+          const i = allNotes.findIndex((n) => n.id === payload.new.id);
+          if (i !== -1) allNotes[i] = payload.new;
+        } else if (payload.eventType === "DELETE") {
+          allNotes = allNotes.filter((n) => n.id !== payload.old.id);
         }
         buildTopicChips(allNotes);
         runSearch();
-        renderTopicGroups(allNotes);
+        renderTopicList(allNotes);
       }
     )
     .subscribe();
 }
-function teardownRealtime(){
-  if (notesChannel) supabase.removeChannel(notesChannel);
-  notesChannel = null;
+
+function teardownRealtime() {
+  if (notesSubscription) supabase.removeChannel(notesSubscription);
+  notesSubscription = null;
 }
 
-/* ------------ Boot after login ------------ */
-async function bootAfterLogin(){
-  await loadNotes();
-  buildTopicChips(allNotes);
-  renderTopicGroups(allNotes);
-  setupRealtime();
-}
-
-/* ------------ CRUD ------------ */
-async function loadNotes(){
+// ---------- CRUD ----------
+async function loadNotes() {
   const { data, error } = await supabase
     .from("notes")
     .select("*")
     .order("updated_at", { ascending: false })
     .limit(1000);
-  if (error){ console.error(error); return alert("Failed to load notes."); }
+  if (error) {
+    console.error(error);
+    return alert("Failed to load notes.");
+  }
   allNotes = data || [];
   runSearch();
+  renderTopicList(allNotes);
 }
 
-async function saveNote(){
-  if (!currentUser) return alert("Please login first.");
+async function saveNote() {
+  if (!currentUser) return alert("Please log in first.");
+  const id = uuid();
+  const title = $("#title").value.trim();
+  const qids = $("#qid").value.trim();
+  const topics = parseComma($("#topics").value);
+  const refs = $("#refs").value.trim();
+  const body = $("#body").value;
+
   const payload = {
-    id: currentEditingId || uid(),
+    id,
     user_id: currentUser.id,
-    title: $("#title").value.trim(),
-    question_id: $("#qid").value.trim(),
-    topics: parseCSV($("#topics").value),
-    refs: $("#refs").value.trim(),
-    body: $("#body").value
+    title,
+    question_id: qids,
+    topics,
+    refs,
+    body,
   };
 
-  const { error } = await supabase.from("notes").upsert(payload, { onConflict: "id" });
-  if (error){ console.error(error); $("#saveStatus").textContent = "Save failed."; return; }
-  currentEditingId = payload.id;
-  $("#saveStatus").textContent = "Saved ✔";
-  await sleep(1200); $("#saveStatus").textContent = "";
+  const { error } = await supabase
+    .from("notes")
+    .upsert(payload, { onConflict: "id" });
+
+  if (error) {
+    console.error(error);
+    $("#saveStatus").textContent = "Save failed.";
+  } else {
+    $("#saveStatus").textContent = "Saved ✔";
+    await sleep(1000);
+    $("#saveStatus").textContent = "";
+    resetForm();
+  }
 }
 
-async function deleteNote(id){
+async function deleteNote(id) {
   if (!confirm("Delete this note?")) return;
   const { error } = await supabase.from("notes").delete().eq("id", id);
-  if (error){ console.error(error); alert("Delete failed."); }
+  if (error) {
+    console.error(error);
+    alert("Delete failed.");
+  }
 }
 
-function startEdit(note){
-  currentEditingId = note.id;
-  $("#title").value  = note.title || "";
-  $("#qid").value    = note.question_id || "";
-  $("#topics").value = (note.topics || []).join(", ");
-  $("#refs").value   = note.refs || "";
-  $("#body").value   = note.body || "";
-  // Switch to Add tab
-  $$(".tab").forEach(t=>t.classList.remove("active"));
+function editNote(n) {
+  $("#title").value = n.title || "";
+  $("#qid").value = n.question_id || "";
+  $("#topics").value = (n.topics || []).join(", ");
+  $("#refs").value = n.refs || "";
+  $("#body").value = n.body || "";
+  $(".tab.active").classList.remove("active");
   $("[data-tab='add']").classList.add("active");
-  $("#add").style.display=""; $("#browse").style.display="none";
+  $("#add").style.display = "";
+  $("#browse").style.display = "none";
 }
 
-function resetForm(){
-  currentEditingId = null;
-  $("#title").value = $("#qid").value = $("#topics").value = $("#refs").value = $("#body").value = "";
+function resetForm() {
+  $("#title").value = "";
+  $("#qid").value = "";
+  $("#topics").value = "";
+  $("#refs").value = "";
+  $("#body").value = "";
   $("#saveStatus").textContent = "";
 }
 
-/* ------------ Search ------------ */
-$("#q").addEventListener("input", ()=>{
-  clearTimeout(debounceHandle);
-  debounceHandle = setTimeout(runSearch, 160);
+// ---------- Search ----------
+$("#q").addEventListener("input", () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runSearch, 200);
 });
 
-document.addEventListener("keydown", (e)=>{
-  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="enter") saveNote();
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "enter") saveNote();
 });
 
 $("#saveBtn").addEventListener("click", saveNote);
 $("#resetBtn").addEventListener("click", resetForm);
 
-function parseQuery(q){
-  const out = { topic:null, qid:null, title:null, plain:null };
+function runSearch() {
+  const query = $("#q").value.trim();
+  const results = filterNotes(allNotes, query, activeTopicFilter);
+  renderResults(results);
+}
+
+function parseSearch(q) {
+  const out = { topic: null, qid: null, title: null, plain: null };
   if (!q) return out;
-  const parts = q.toLowerCase().trim().split(/\s+/);
-  const leftover = [];
-  for (const p of parts){
+  const parts = q.toLowerCase().split(/\s+/g);
+  let rest = [];
+  for (const p of parts) {
     if (p.startsWith("topic:")) out.topic = p.slice(6);
     else if (p.startsWith("qid:")) out.qid = p.slice(4);
     else if (p.startsWith("title:")) out.title = p.slice(6);
-    else leftover.push(p);
+    else rest.push(p);
   }
-  out.plain = leftover.join(" ").trim() || null;
+  out.plain = rest.join(" ").trim() || null;
   return out;
 }
 
-function runSearch(){
-  const q = $("#q").value || "";
-  const filters = parseQuery(q);
-  let list = allNotes;
-
-  if (activeChip){
-    list = list.filter(n => (n.topics||[]).some(t=>t.toLowerCase()===activeChip.toLowerCase()));
-  }
-  if (filters.topic){
-    const s = filters.topic;
-    list = list.filter(n => (n.topics||[]).some(t=>t.toLowerCase().includes(s)));
-  }
-  if (filters.qid){
-    const s = filters.qid;
-    list = list.filter(n => (n.question_id||"").toLowerCase().includes(s));
-  }
-  if (filters.title){
-    const s = filters.title;
-    list = list.filter(n => (n.title||"").toLowerCase().includes(s));
-  }
-  if (filters.plain){
-    const s = filters.plain;
-    list = list.filter(n =>
-      (n.title||"").toLowerCase().includes(s) ||
-      (n.body||"").toLowerCase().includes(s) ||
-      (n.refs||"").toLowerCase().includes(s) ||
-      (n.question_id||"").toLowerCase().includes(s) ||
-      (n.topics||[]).some(t=>t.toLowerCase().includes(s))
+function filterNotes(notes, query, topicFilter) {
+  if (!notes.length) return [];
+  const p = parseSearch(query);
+  let res = notes;
+  if (topicFilter)
+    res = res.filter((n) =>
+      (n.topics || []).some((t) => t.toLowerCase() === topicFilter.toLowerCase())
+    );
+  if (p.topic)
+    res = res.filter((n) =>
+      (n.topics || []).some((t) => t.toLowerCase().includes(p.topic))
+    );
+  if (p.qid)
+    res = res.filter((n) =>
+      (n.question_id || "").toLowerCase().includes(p.qid)
+    );
+  if (p.title)
+    res = res.filter((n) => (n.title || "").toLowerCase().includes(p.title));
+  if (p.plain) {
+    const s = p.plain;
+    res = res.filter(
+      (n) =>
+        (n.title || "").toLowerCase().includes(s) ||
+        (n.body || "").toLowerCase().includes(s) ||
+        (n.refs || "").toLowerCase().includes(s) ||
+        (n.question_id || "").toLowerCase().includes(s) ||
+        (n.topics || []).some((t) => t.toLowerCase().includes(s))
     );
   }
-  renderSearchResults(list.slice(0,100));
+  return res.slice(0, 100);
 }
 
-/* ------------ Search results UI ------------ */
-function renderSearchResults(list){
+// ---------- Render ----------
+function renderResults(list) {
   const container = $("#results");
-  const tpl = $("#resultTpl");
-  if (!list.length){
+  if (!list.length) {
     container.innerHTML = `<div class="empty">No matches. Try <b>topic:Algebra</b> or <b>qid:2023</b>.</div>`;
     return;
   }
-  container.innerHTML = "";
-  list.forEach(n=>{
-    const node = tpl.content.firstElementChild.cloneNode(true);
-    node.dataset.id = n.id;
-    node.querySelector("h3").textContent = n.title || "Untitled";
-    node.querySelector(".meta").innerHTML =
-      `<span>QID: ${esc(n.question_id||"—")}</span>
-       <span>${(n.topics||[]).map(t=>esc(t)).join(", ")||"No topics"}</span>
-       <span>${new Date(n.updated_at).toLocaleString()}</span>`;
-    node.querySelector(".text").innerHTML = linkify(esc(n.body||""));
-    node.querySelector(".edit").addEventListener("click", ()=>startEdit(n));
-    node.querySelector(".del").addEventListener("click", ()=>deleteNote(n.id));
-    container.appendChild(node);
-  });
+  container.innerHTML = list
+    .map((n) => {
+      const topics = (n.topics || [])
+        .map((t) => `<span>${escapeHtml(t)}</span>`)
+        .join(" ");
+      return `
+        <div class="result">
+          <h3>${escapeHtml(n.title || "Untitled")}</h3>
+          <div class="meta">
+            <span>QID: ${escapeHtml(n.question_id || "")}</span>
+            <span>${topics}</span>
+            <span>${new Date(n.updated_at).toLocaleString()}</span>
+          </div>
+          <div class="spacer"></div>
+          <div class="text">${linkify(escapeHtml(n.body || ""))}</div>
+          <div class="spacer"></div>
+          <div class="inline-actions">
+            <button class="btn small secondary" onclick="editNote(${JSON.stringify(
+              n
+            ).replace(/"/g, '&quot;')})">Edit</button>
+            <button class="btn small warn" onclick="deleteNote('${n.id}')">Delete</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
-/* ------------ Browse by topic ------------ */
-function buildTopicChips(notes){
+// ---------- Browse ----------
+function buildTopicChips(notes) {
   const box = $("#topicsCloud");
   const set = new Set();
-  notes.forEach(n => (n.topics||[]).forEach(t => set.add(t)));
-  const items = Array.from(set).sort((a,b)=>a.localeCompare(b));
-  box.innerHTML = items.map(t=>`<span class="chip btn" data-topic="${esc(t)}">${esc(t)}</span>`).join("") ||
-                  `<span class="hint">No topics yet.</span>`;
-  box.querySelectorAll("[data-topic]").forEach(c=>{
-    c.addEventListener("click", ()=>{
-      activeChip = (activeChip===c.dataset.topic) ? null : c.dataset.topic;
+  notes.forEach((n) => (n.topics || []).forEach((t) => set.add(t)));
+  const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
+  box.innerHTML = arr
+    .map(
+      (t) =>
+        `<span class="chip ${t === activeTopicFilter ? "active" : ""}" data-chip="${escapeAttr(
+          t
+        )}">${escapeHtml(t)}</span>`
+    )
+    .join("");
+  box.querySelectorAll("[data-chip]").forEach((ch) => {
+    ch.addEventListener("click", () => {
+      activeTopicFilter =
+        activeTopicFilter === ch.dataset.chip ? null : ch.dataset.chip;
       buildTopicChips(allNotes);
-      if (activeChip) c.classList.add("chip-active");
       runSearch();
-      renderTopicGroups(allNotes);
+      renderTopicList(allNotes);
     });
   });
 }
 
-function renderTopicGroups(notes){
+function renderTopicList(notes) {
   const wrap = $("#topicList");
+  if (!notes.length) {
+    wrap.innerHTML = `<div class="empty">No notes yet.</div>`;
+    return;
+  }
   const map = new Map();
-  notes.forEach(n=>{
-    (n.topics && n.topics.length ? n.topics : ["(untagged)"]).forEach(t=>{
-      if (activeChip && t.toLowerCase()!==activeChip.toLowerCase()) return;
+  notes.forEach((n) => {
+    (n.topics && n.topics.length ? n.topics : ["(untagged)"]).forEach((t) => {
       if (!map.has(t)) map.set(t, []);
       map.get(t).push(n);
     });
   });
 
-  if (!map.size){
-    wrap.innerHTML = `<div class="empty">Nothing here yet.</div>`;
-    return;
-  }
-
-  const groups = Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
-  wrap.innerHTML = groups.map(([topic, items])=>{
-    const rows = items.map(n=>`
-      <div class="result">
-        <h3>${esc(n.title||"Untitled")}</h3>
-        <div class="meta">
-          <span>QID: ${esc(n.question_id||"—")}</span>
-          <span>${new Date(n.updated_at).toLocaleString()}</span>
-        </div>
-        <div class="spacer"></div>
-        <div class="text">${linkify(esc(n.body||""))}</div>
-        <div class="spacer"></div>
-        <div class="inline-actions">
-          <button class="btn small secondary" onclick='(${startEdit.toString()})(${JSON.stringify(n)})'>Edit</button>
-          <button class="btn small warn" onclick='(${deleteNote.toString()})("${n.id}")'>Delete</button>
-        </div>
-      </div>
-    `).join("");
-
-    return `
-      <div class="topic-group">
-        <div class="topic-title">${esc(topic)}</div>
-        <div class="spacer"></div>
-        ${rows}
-      </div>
-    `;
-  }).join("");
+  const html = Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([topic, arr]) => {
+      const rows = arr
+        .map(
+          (n) => `
+        <div class="result">
+          <h3>${escapeHtml(n.title || "Untitled")}</h3>
+          <div class="meta"><span>QID: ${escapeHtml(
+            n.question_id || ""
+          )}</span><span>${new Date(n.updated_at).toLocaleString()}</span></div>
+          <div class="text">${linkify(escapeHtml(n.body || ""))}</div>
+          <div class="inline-actions">
+            <button class="btn small secondary" onclick="editNote(${JSON.stringify(
+              n
+            ).replace(/"/g, '&quot;')})">Edit</button>
+            <button class="btn small warn" onclick="deleteNote('${n.id}')">Delete</button>
+          </div>
+        </div>`
+        )
+        .join("");
+      return `<div class="topic-group">
+        <div class="topic-title">${escapeHtml(topic)}</div>
+        <div class="spacer"></div>${rows}
+      </div>`;
+    })
+    .join("");
+  wrap.innerHTML = html;
 }
 
-/* ------------ Tools: export / import / nuke ------------ */
-$("#exportBtn").addEventListener("click", ()=>{
-  if(!currentUser) return alert("Login first.");
-  const data = JSON.stringify({ exported_at: new Date().toISOString(), notes: allNotes }, null, 2);
+// ---------- Export / Import / Delete All ----------
+$("#exportBtn").addEventListener("click", () => {
+  if (!currentUser) return alert("Log in first.");
+  const data = JSON.stringify(
+    { exported_at: new Date().toISOString(), notes: allNotes },
+    null,
+    2
+  );
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "jam-notes-export.json"; a.click();
+  a.href = url;
+  a.download = "jam-notes-export.json";
+  a.click();
   URL.revokeObjectURL(url);
 });
 
-$("#importBtn").addEventListener("click", ()=>$("#importFile").click());
-$("#importFile").addEventListener("change", async (e)=>{
-  if(!currentUser) return alert("Login first.");
-  const f = e.target.files?.[0]; if(!f) return;
+$("#importBtn").addEventListener("click", () => $("#importFile").click());
+$("#importFile").addEventListener("change", async (e) => {
+  if (!currentUser) return alert("Log in first.");
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
   let parsed;
-  try { parsed = JSON.parse(await f.text()); } catch { return alert("Invalid JSON."); }
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return alert("Invalid JSON file.");
+  }
   const incoming = parsed.notes || [];
-  if (!incoming.length) return alert("No notes in file.");
+  if (!incoming.length) return alert("No notes found.");
 
-  const map = new Map(allNotes.map(n=>[n.id,n]));
+  const map = new Map(allNotes.map((n) => [n.id, n]));
   const upserts = [];
-  for (const n of incoming){
+  for (const n of incoming) {
     if (!n.id) continue;
     const ex = map.get(n.id);
-    if (!ex || new Date(n.updated_at) < new Date(ex.updated_at)) {
-      // keep cloud as source of truth; only add if new id or local is newer
+    if (!ex || new Date(n.updated_at) > new Date(ex.updated_at)) {
       upserts.push({
         id: n.id,
         user_id: currentUser.id,
@@ -360,23 +444,31 @@ $("#importFile").addEventListener("change", async (e)=>{
         question_id: n.question_id || "",
         topics: n.topics || [],
         refs: n.refs || "",
-        body: n.body || ""
+        body: n.body || "",
       });
     }
   }
   if (!upserts.length) return alert("Nothing to import.");
-  const { error } = await supabase.from("notes").upsert(upserts, { onConflict: "id" });
-  if (error){ console.error(error); return alert("Import failed."); }
+  const { error } = await supabase.from("notes").upsert(upserts);
+  if (error) {
+    console.error(error);
+    return alert("Import failed.");
+  }
   alert("Import complete.");
 });
 
-$("#nukeBtn").addEventListener("click", async ()=>{
-  if(!currentUser) return alert("Login first.");
-  if(!confirm("Delete ALL your notes?")) return;
-  const { error } = await supabase.from("notes").delete().eq("user_id", currentUser.id);
-  if (error){ console.error(error); return alert("Delete failed."); }
-  alert("All notes deleted.");
+$("#nukeBtn").addEventListener("click", async () => {
+  if (!currentUser) return alert("Log in first.");
+  if (!confirm("Delete ALL notes?")) return;
+  const { error } = await supabase
+    .from("notes")
+    .delete()
+    .eq("user_id", currentUser.id);
+  if (error) {
+    console.error(error);
+    alert("Delete failed.");
+  } else alert("All notes deleted.");
 });
 
-/* ------------ Boot ------------ */
+// ---------- Boot ----------
 refreshSessionUI();
