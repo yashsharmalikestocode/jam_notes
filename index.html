@@ -15,7 +15,6 @@
         <h1>JAM Notes</h1>
       </div>
 
-      <!-- Auth: exactly one group is visible via CSS state classes -->
       <div class="auth logged-out" id="auth">
         <div id="auth-fields" class="group">
           <input id="email" type="email" placeholder="Email" autocomplete="email">
@@ -23,7 +22,6 @@
           <button class="btn secondary" id="btn-signup">Sign Up</button>
           <button class="btn" id="btn-login">Login</button>
         </div>
-
         <div id="auth-session" class="group">
           <span id="session-email" class="muted"></span>
           <button class="btn warn" id="btn-logout">Logout</button>
@@ -87,7 +85,18 @@
     <section id="browse" class="grid" style="display:none" role="tabpanel">
       <div class="card">
         <h2>All Notes by Topic</h2>
+
+        <!-- NEW: live search in Browse tab -->
+        <label for="q-browse">Search notes</label>
+        <input id="q-browse" type="search" placeholder="Type to search… (topic:Algebra  qid:2022  title:rank)">
+        <div class="spacer"></div>
+
         <div id="topicsCloud" class="chips" aria-live="polite"></div>
+        <div class="spacer"></div>
+
+        <!-- NEW: results area in Browse tab -->
+        <div id="results-browse"></div>
+
         <div class="spacer"></div>
         <div class="list" id="topicList"></div>
       </div>
@@ -121,7 +130,6 @@
   </template>
 
   <script>
-    /* Supabase config — paste yours */
     const SUPABASE_URL = "https://bgxxtdznrxuqncnxnnsd.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneHh0ZHpucnh1cW5jbnhubnNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTg5MzEsImV4cCI6MjA3NjY5NDkzMX0.scFPvXFDJnKjgL0j3sHU3csmamMAqBtDFG0FRvCr9uk";
   </script>
