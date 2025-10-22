@@ -15,9 +15,13 @@ header{display:flex; gap:12px; align-items:center; justify-content:space-between
 .logo{width:36px; height:36px; background:conic-gradient(from 180deg,var(--accent),var(--accent-2),var(--yellow)); border-radius:10px; box-shadow:0 8px 30px rgba(87,208,201,.2)}
 h1{font-size:20px; margin:0}
 
+/* Auth — ONLY ONE state shows at a time */
 .auth{display:flex; align-items:center; gap:8px}
+.auth .group{display:none; align-items:center; gap:8px}
+.auth.logged-out #auth-fields{display:flex}
+.auth.logged-in  #auth-session{display:flex}
 .auth input{background:var(--panel-2); border:1px solid var(--border); color:var(--ink); padding:8px 10px; border-radius:10px}
-.auth .muted{margin-right:6px}
+.muted{color:var(--muted)}
 
 .tabs{display:flex; background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden}
 .tab{padding:10px 14px; cursor:pointer; color:var(--muted); border-right:1px solid var(--border); user-select:none; background:none; border:none}
@@ -56,3 +60,7 @@ textarea{min-height:200px; line-height:1.5; resize:vertical}
 .topic-group{margin-bottom:16px}
 .topic-title{position:sticky; top:0; background:linear-gradient(180deg,rgba(10,16,24,.95),rgba(10,16,24,.85)); backdrop-filter: blur(4px); padding:8px 10px; border:1px solid var(--border); border-radius:10px; font-weight:700}
 .inline-actions{display:flex; gap:8px}
+
+@media (max-width: 900px){
+  .grid{grid-template-columns: 1fr;}
+}
