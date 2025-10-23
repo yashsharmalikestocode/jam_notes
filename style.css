@@ -1,1 +1,90 @@
+:root{
+  --bg:#0b0f14; --bg-2:#0a1018; --panel:#111823; --panel-2:#0f1520;
+  --ink:#e6edf3; --muted:#9fb3c8;
+  --accent:#7cacf8; --accent-2:#57d0c9; --warn:#ff6473;
+  --border:rgba(255,255,255,.08); --chip:#1b2432;
+  --radius:14px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--bg),var(--bg-2) 60%,#070d14);
+}
+
+/* Header */
+.app-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; border-bottom:1px solid var(--border);
+  position:sticky; top:0; backdrop-filter:saturate(120%) blur(6px);
+  background:rgba(12,16,24,.8); z-index:5;
+}
+.brand{display:flex; gap:12px; align-items:center}
+.logo{width:36px; height:36px; border-radius:10px; background:conic-gradient(from 180deg,var(--accent),var(--accent-2),#ffd166); box-shadow:0 8px 30px rgba(124,172,248,.2)}
+h1{margin:0; font-size:20px}
+
+/* Auth (mutually exclusive states) */
+.auth{display:flex; align-items:center; gap:8px}
+.auth .group{display:none; align-items:center; gap:8px}
+.auth.logged-out #auth-fields{display:flex}
+.auth.logged-in  #auth-session{display:flex}
+.auth input{background:var(--panel-2); border:1px solid var(--border); color:var(--ink); padding:8px 10px; border-radius:10px}
+.muted{color:var(--muted)}
+
+/* Tabs */
+.tabs{display:flex; gap:10px; padding:10px 18px; border-bottom:1px solid var(--border)}
+.tab{
+  appearance:none; border:none; cursor:pointer;
+  padding:8px 14px; border-radius:999px; color:var(--muted);
+  background:var(--panel); border:1px solid var(--border);
+}
+.tab.active{color:#081018; font-weight:700; background:linear-gradient(180deg,var(--accent),#5693f4)}
+
+/* Layout */
+.panel-grid{display:grid; grid-template-columns: 1.15fr .85fr; gap:16px; padding:16px}
+.card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px}
+.card h2{margin:0 0 10px; font-size:16px}
+.row{display:flex; gap:10px}
+.row>*{flex:1}
+label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
+input[type="text"], input[type="search"], input[type="email"], input[type="password"], textarea{
+  width:100%; background:var(--panel-2); color:var(--ink);
+  border:1px solid var(--border); border-radius:12px; padding:12px; outline:none
+}
+textarea{min-height:200px; line-height:1.5; resize:vertical}
+
+/* Buttons */
+.btn{
+  appearance:none; border:none; cursor:pointer; font-weight:700;
+  background:linear-gradient(180deg,var(--accent),#5693f4); color:#081018;
+  padding:10px 14px; border-radius:12px; box-shadow:0 6px 20px rgba(124,172,248,.25)
+}
+.btn.secondary{background:linear-gradient(180deg,#263245,#1a2434); color:var(--ink); border:1px solid var(--border); box-shadow:none}
+.btn.warn{background:linear-gradient(180deg,#ff7b89,#ff5e74); color:#1a0f12}
+.btn.small{padding:6px 10px; font-size:12px}
+
+/* Chips, lists, helpers */
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{background:var(--chip); border:1px solid var(--border); color:var(--ink); padding:4px 10px; border-radius:999px; font-size:12px; cursor:pointer}
+.chip.active{outline:2px solid var(--accent)}
+
+.result{padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--border); margin-bottom:10px}
+.result h3{margin:0 0 6px; font-size:15px}
+.meta{display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
+.meta span{background:#0e141f; padding:4px 8px; border-radius:8px; border:1px solid var(--border)}
+.inline-actions{display:flex; gap:8px}
+.list{max-height:420px; overflow:auto; padding-right:6px}
+
+.split{display:flex; gap:8px; justify-content:space-between; align-items:center}
+.kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; background:var(--panel-2); border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px}
+.hint{color:var(--muted); font-size:12px}
+.small{font-size:12px}
+.spacer{height:8px}
+
+/* Responsive */
+@media (max-width: 960px){
+  .panel-grid{grid-template-columns: 1fr;}
+}
 
