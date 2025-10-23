@@ -3,1214 +3,138 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Supabase Notes</title>
-  
-  <!-- Supabase JS Library -->
+  <title>JAM Notes</title>
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Embedded CSS -->
-  <style>
-    :root {
-      --bg: #0b0f14;
-      --panel: #111823;
-      --panel-2: #0f1520;
-      --ink: #e6edf3;
-      --muted: #9fb3c8;
-      --accent: #7cacf8;
-      --accent-2: #57d0c9;
-      --red: #ff6473;
-      --yellow: #ffd166;
-      --border: rgba(255, 255, 255, .08);
-      --chip: #1b2432;
-    }
-
-    * { box-sizing: border-box; }
-
-    html,
-    body { height: 100%; }
-
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, var(--bg), #0b0f14 60%, #0a1018);
-      color: var(--ink);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-
-    header {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .brand {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .logo {
-      width: 36px;
-      height: 36px;
-      background: conic-gradient(from 180deg, var(--accent), var(--accent-2), var(--yellow));
-      border-radius: 10px;
-      box-shadow: 0 8px 30px rgba(87, 208, 201, .2);
-    }
-
-    h1 {
-      font-size: 20px;
-      margin: 0;
-    }
-
-    /* Auth — ONLY ONE state shows at a time */
-    .auth {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .auth .group {
-      display: none;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .auth.logged-out #auth-fields { display: flex; }
-    .auth.logged-in #auth-session { display: flex; }
-
-    .auth input {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      color: var(--ink);
-      padding: 8px 10px;
-      border-radius: 10px;
-    }
-
-    .muted { color: var(--muted); }
-
-    .tabs {
-      display: flex;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .tab {
-      padding: 10px 14px;
-      cursor: pointer;
-      color: var(--muted);
-      border-right: 1px solid var(--border);
-      user-select: none;
-      background: none;
-      border: none;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .tab:last-child { border-right: none; }
-
-    .tab.active {
-      color: var(--ink);
-      background: linear-gradient(180deg, rgba(124, 172, 248, .12), transparent);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: 16px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-    }
-
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 16px;
-    }
-
-    label {
-      font-size: 12px;
-      color: var(--muted);
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    input[type="text"],
-    input[type="search"],
-    input[type="email"],
-    input[type="password"],
-    textarea {
-      width: 100%;
-      background: var(--panel-2);
-      color: var(--ink);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      outline: none;
-      font-family: inherit;
-      font-size: 14px;
-    }
-
-    textarea {
-      min-height: 200px;
-      line-height: 1.5;
-      resize: vertical;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .row>* { flex: 1; }
-
-    .btn {
-      appearance: none;
-      border: none;
-      background: linear-gradient(180deg, var(--accent), #5693f4);
-      color: #081018;
-      font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 12px;
-      cursor: pointer;
-      box-shadow: 0 6px 20px rgba(124, 172, 248, .25);
-      font-family: inherit;
-      font-size: 14px;
-    }
-    .btn:hover { opacity: 0.9; }
-
-    .btn.secondary {
-      background: linear-gradient(180deg, #263245, #1a2434);
-      color: var(--ink);
-      border: 1px solid var(--border);
-      box-shadow: none;
-    }
-
-    .btn.warn {
-      background: linear-gradient(180deg, #ff7b89, #ff5e74);
-      color: #1a0f12;
-    }
-
-    .btn.small {
-      padding: 6px 10px;
-      font-size: 12px;
-    }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .small { font-size: 12px; }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .chip {
-      background: var(--chip);
-      border: 1px solid var(--border);
-      color: var(--ink);
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      cursor: default;
-    }
-    
-    .chip.btn { 
-      cursor: pointer;
-      transition: background .2s;
-    }
-    .chip.btn:hover { background: #2a384a; }
-    .chip.btn.active {
-      background: var(--accent);
-      color: #081018;
-      border-color: var(--accent);
-      font-weight: 600;
-    }
-
-    .result {
-      padding: 12px;
-      border-radius: 14px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      margin-bottom: 10px;
-    }
-
-    .result h3 {
-      margin: 0 0 6px;
-      font-size: 15px;
-    }
-
-    .meta {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .meta span {
-      background: #0e141f;
-      padding: 4px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-
-    .empty {
-      padding: 12px;
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .split {
-      display: flex;
-      gap: 8px;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .spacer { height: 8px; }
-
-    .kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-
-    .list {
-      max-height: 420px;
-      overflow: auto;
-      padding-right: 6px;
-    }
-
-    .topic-group { margin-bottom: 16px; }
-
-    .topic-title {
-      position: sticky;
-      top: 0;
-      background: linear-gradient(180deg, rgba(10, 16, 24, .95), rgba(10, 16, 24, .85));
-      backdrop-filter: blur(4px);
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-weight: 700;
-    }
-
-    .inline-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    a.inline {
-      color: var(--accent);
-      text-decoration: underline;
-      word-break: break-all;
-    }
-
-    /* Custom Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      backdrop-filter: blur(4px);
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity .2s, visibility .2s;
-    }
-    .modal-overlay.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .modal-content {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-      transform: scale(0.95);
-      transition: transform .2s;
-    }
-    .modal-overlay.visible .modal-content {
-      transform: scale(1);
-    }
-
-    .modal-content p {
-      margin: 0 0 20px;
-      line-height: 1.5;
-      font-size: 15px;
-    }
-
-    .modal-actions {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-    }
-
-    /* Responsive */
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 600px) {
-      header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .tabs { justify-content: center; }
-      .row { flex-direction: column; }
-    }
-  </style>
 </head>
-
 <body>
-  <!-- Main App Wrapper -->
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <h1>Supabase Notes</h1>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h1>JAM Notes</h1>
+    </div>
+
+    <!-- Auth block: shows exactly ONE state via CSS -->
+    <div id="auth" class="auth logged-out">
+      <div id="auth-fields" class="group">
+        <input id="email" type="email" placeholder="Email" autocomplete="email" />
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+        <button id="btn-signup" class="btn secondary">Sign Up</button>
+        <button id="btn-login" class="btn">Login</button>
       </div>
-
-      <!-- Auth: exactly one group is visible via CSS state classes -->
-      <div class="auth logged-out" id="auth">
-        <div id="auth-fields" class="group">
-          <input id="email" type="email" placeholder="Email" autocomplete="email">
-          <input id="password" type="password" placeholder="Password" autocomplete="current-password">
-          <button class="btn secondary" id="btn-signup">Sign Up</button>
-          <button class="btn" id="btn-login">Login</button>
-        </div>
-
-        <div id="auth-session" class="group">
-          <span id="session-email" class="muted"></span>
-          <button class="btn warn" id="btn-logout">Logout</button>
-        </div>
-      </div>
-
-      <nav class="tabs" role="tablist" aria-label="Main">
-        <button class="tab active" data-tab="add" role="tab" aria-selected="true">Add Note</button>
-        <button class="tab" data-tab="browse" role="tab" aria-selected="false">Browse & Search</button>
-      </nav>
-    </header>
-
-    <!-- ADD NOTE -->
-    <section id="add" class="grid" role="tabpanel">
-      <div class="card">
-        <h2>Quick Add</h2>
-        <div class="row">
-          <div>
-            <label for="title">Title</label>
-            <input id="title" type="text" placeholder="e.g. Definite integral with substitution">
-          </div>
-          <div>
-            <label for="qid">Question ID</label>
-            <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10">
-          </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="row">
-          <div>
-            <label for="topics">Topics (comma separated)</label>
-            <input id="topics" type="text" placeholder="e.g. Calculus, Substitution">
-          </div>
-          <div>
-            <label for="refs">References / Links</label>
-            <input id="refs" type="text" placeholder="Books, videos, URLs">
-          </div>
-        </div>
-        <div class="spacer"></div>
-        <div>
-          <label for="body">Your note (how you solved it)</label>
-          <textarea id="body" placeholder="Write the approach, formulas, traps, and result..."></textarea>
-        </div>
-        <div class="spacer"></div>
-        <div class="split">
-          <div class="hint">Tip: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
-          <div class="inline-actions">
-            <button class="btn" id="saveBtn">Save Note</button>
-            <button class="btn secondary" id="resetBtn">Clear</button>
-          </div>
-        </div>
-        <div class="spacer"></div>
-        <div id="saveStatus" class="hint"></div>
-      </div>
-
-      <div class="card">
-        <h2>Search (instant)</h2>
-        <label for="q">Search by text, topic, or question ID</label>
-        <input id="q" type="search" placeholder="Type to search… (topic:Calculus  qid:2023  title:integration)">
-        <div class="spacer"></div>
-        <div id="results">
-          <div class="empty">Log in to search your notes.</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- BROWSE -->
-    <section id="browse" class="grid" style="display:none" role="tabpanel">
-      <div class="card">
-        <h2>All Notes by Topic</h2>
-
-        <!-- Live search in Browse tab -->
-        <label for="q-browse">Search notes</label>
-        <input id="q-browse" type="search" placeholder="Type to search… (topic:Algebra  qid:2022  title:rank)">
-        <div class="spacer"></div>
-
-        <div id="topicsCloud" class="chips" aria-live="polite">
-          <div class="hint">Log in to see your topics.</div>
-        </div>
-        <div class="spacer"></div>
-
-        <!-- Results area in Browse tab -->
-        <div id="results-browse"></div>
-
-        <div class="spacer"></div>
-        <div class="list" id="topicList">
-          <div class="empty">Log in to see your notes.</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Tools</h2>
-        <div class="row">
-          <button class="btn secondary" id="exportBtn">Export JSON</button>
-          <input type="file" id="importFile" accept="application/json" style="display: none;">
-          <button class="btn secondary" id="importBtn">Import JSON</button>
-          <button class="btn warn" id="nukeBtn">Delete All</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="hint small">Cloud sync only (Supabase). No local storage.</div>
-      </div>
-    </section>
-  </div>
-
-  <!-- Custom Modal for Alerts and Confirms -->
-  <div id="modal-overlay" class="modal-overlay">
-    <div class="modal-content">
-      <p id="modal-message"></p>
-      <div id="modal-actions" class="modal-actions">
-        <button class="btn" id="modal-ok">OK</button>
-        <button class="btn secondary" id="modal-cancel">Cancel</button>
+      <div id="auth-session" class="group">
+        <span id="session-email" class="muted"></span>
+        <button id="btn-logout" class="btn warn">Logout</button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <!-- Embedded JavaScript -->
+  <nav class="tabs" role="tablist" aria-label="Main">
+    <button class="tab active" data-tab="add" aria-selected="true">Add Note</button>
+    <button class="tab" data-tab="browse" aria-selected="false">Browse & Search</button>
+  </nav>
+
+  <!-- ADD NOTE -->
+  <main id="add" class="panel-grid" role="tabpanel">
+    <section class="card">
+      <h2>Quick Add</h2>
+      <div class="row">
+        <div>
+          <label for="title">Title</label>
+          <input id="title" type="text" placeholder="e.g. Definite integral with substitution" />
+        </div>
+        <div>
+          <label for="qid">Question ID</label>
+          <input id="qid" type="text" placeholder="e.g. PY-2023-Set1-Q10" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="topics">Topics (comma separated)</label>
+          <input id="topics" type="text" placeholder="e.g. Calculus, Substitution" />
+        </div>
+        <div>
+          <label for="refs">References / Links</label>
+          <input id="refs" type="text" placeholder="Books, videos, URLs" />
+        </div>
+      </div>
+
+      <div>
+        <label for="body">Your note (how you solved it)</label>
+        <textarea id="body" placeholder="Write the approach, formulas, traps, and result..."></textarea>
+      </div>
+
+      <div class="split">
+        <div class="hint">Tip: <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to save</div>
+        <div class="inline-actions">
+          <button id="saveBtn" class="btn">Save Note</button>
+          <button id="resetBtn" class="btn secondary">Clear</button>
+        </div>
+      </div>
+
+      <div id="saveStatus" class="hint"></div>
+    </section>
+
+    <section class="card">
+      <h2>Search (instant)</h2>
+      <label for="q">Search by text, topic, or question ID</label>
+      <input id="q" type="search" placeholder="Type to search… (topic:Calculus  qid:2023  title:integration)" />
+      <div class="spacer"></div>
+      <div id="results"></div>
+    </section>
+  </main>
+
+  <!-- BROWSE -->
+  <main id="browse" class="panel-grid" style="display:none" role="tabpanel">
+    <section class="card">
+      <h2>All Notes by Topic</h2>
+
+      <label for="q-browse">Search notes</label>
+      <input id="q-browse" type="search" placeholder="Type to search… (topic:Algebra  qid:2022  title:rank)" />
+      <div class="spacer"></div>
+
+      <div id="topicsCloud" class="chips" aria-live="polite"></div>
+      <div class="spacer"></div>
+
+      <div id="results-browse"></div>
+      <div class="spacer"></div>
+      <div id="topicList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Tools</h2>
+      <div class="row">
+        <button id="exportBtn" class="btn secondary">Export JSON</button>
+        <input id="importFile" type="file" accept="application/json" hidden />
+        <button id="importBtn" class="btn secondary">Import JSON</button>
+        <button id="nukeBtn" class="btn warn">Delete All</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="hint small">Cloud sync only (Supabase). No local storage.</div>
+    </section>
+  </main>
+
+  <!-- Template for result cards -->
+  <template id="resultTpl">
+    <div class="result" data-id="">
+      <h3></h3>
+      <div class="meta"></div>
+      <div class="spacer"></div>
+      <div class="text"></div>
+      <div class="spacer"></div>
+      <div class="inline-actions">
+        <button class="btn small secondary edit">Edit</button>
+        <button class="btn small warn del">Delete</button>
+      </div>
+    </div>
+  </template>
+
   <script>
-    /*
-     * -----------------------------------------------------------------
-     * SUPABASE CONFIG
-     * -----------------------------------------------------------------
-     * !!! IMPORTANT !!!
-     * Replace these with your own Supabase project URL and Anon Key.
-     */
+    /* Supabase config — as requested, your values are prefilled */
     const SUPABASE_URL = "https://bgxxtdznrxuqncnxnnsd.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneHh0ZHpucnh1cW5jbnhubnNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTg5MzEsImV4cCI6MjA3NjY5NDkzMX0.scFPvXFDJnKjgL0j3sHU3csmamMAqBtDFG0FRvCr9uk";
-    /*
-     * -----------------------------------------------------------------
-     */
-    
-    // Global State
-    let supabase = null;
-    let currentUser = null;
-    let allNotes = [];
-    let activeTopicFilter = null;
-    let debounceTimer = null;
-    let notesSubscription = null;
-    let currentEditingId = null;
-
-    // DOM Selectors
-    const $ = (s) => document.querySelector(s);
-    const $$ = (s) => Array.from(document.querySelectorAll(s));
-
-    // Helper Functions
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    const parseComma = (s) => s ? s.split(',').map(x => x.trim()).filter(Boolean) : [];
-    const escapeHtml = (s) => (s || '').toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    const linkify = (text) => {
-        const url = /(https?:\/\/[^\s)]+)|(www\.[^\s)]+)/gim;
-        return (text || '').replace(url, (m) => `<a class="inline" target="_blank" rel="noopener" href="${m.startsWith('http') ? m : 'https://' + m}">${escapeHtml(m)}</a>`);
-    }
-
-    /* ---------- Custom Modal Helpers ---------- */
-    const modalOverlay = $("#modal-overlay");
-    const modalMessage = $("#modal-message");
-    const modalOk = $("#modal-ok");
-    const modalCancel = $("#modal-cancel");
-
-    function showAlert(message) {
-      return new Promise((resolve) => {
-        modalMessage.textContent = message;
-        modalCancel.style.display = "none";
-        modalOk.style.display = "inline-block";
-        
-        modalOk.onclick = () => {
-          modalOverlay.classList.remove("visible");
-          resolve();
-        };
-        
-        modalOverlay.classList.add("visible");
-      });
-    }
-
-    function showConfirm(message) {
-      return new Promise((resolve) => {
-        modalMessage.textContent = message;
-        modalCancel.style.display = "inline-block";
-        modalOk.style.display = "inline-block";
-
-        modalOk.onclick = () => {
-          modalOverlay.classList.remove("visible");
-          resolve(true);
-        };
-        modalCancel.onclick = () => {
-          modalOverlay.classList.remove("visible");
-          resolve(false);
-        };
-
-        modalOverlay.classList.add("visible");
-      });
-    }
-
-    /* ---------- Tabs ---------- */
-    function setupTabs() {
-      const tabs = $$(".tab");
-      tabs.forEach(btn => {
-        btn.addEventListener("click", () => {
-          tabs.forEach(b => {
-            b.classList.remove("active");
-            b.setAttribute("aria-selected", "false");
-          });
-          btn.classList.add("active");
-          btn.setAttribute("aria-selected", "true");
-          
-          const name = btn.dataset.tab;
-          $("#add").style.display = name === "add" ? "" : "none";
-          $("#browse").style.display = name === "browse" ? "" : "none";
-          
-          // Refresh views when switching tabs
-          refreshAllViews();
-        });
-      });
-    }
-
-    /* ---------- Auth ---------- */
-    function setAuthState(loggedIn) {
-      const box = $("#auth");
-      box.classList.toggle("logged-in", loggedIn);
-      box.classList.toggle("logged-out", !loggedIn);
-    }
-
-    async function refreshSessionUI() {
-      if (!supabase) return;
-      
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error.message);
-        return;
-      }
-      
-      currentUser = data.session?.user ?? null;
-
-      if (currentUser) {
-        $("#session-email").textContent = `${currentUser.email}`;
-        setAuthState(true);
-        await afterLoginBoot();
-      } else {
-        $("#session-email").textContent = "";
-        setAuthState(false);
-        clearAllData();
-      }
-    }
-    
-    function setupAuthListeners() {
-      $("#btn-signup").addEventListener("click", async () => {
-        const email = $("#email").value.trim();
-        const password = $("#password").value;
-        if (!email || !password) return showAlert("Email & password required.");
-        
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) return showAlert(error.message);
-        await showAlert("Sign up successful. Please check your email for a confirmation link, then log in.");
-      });
-
-      $("#btn-login").addEventListener("click", async () => {
-        const email = $("#email").value.trim();
-        const password = $("#password").value;
-        if (!email || !password) return showAlert("Email & password required.");
-        
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return showAlert(error.message);
-        // On success, onAuthStateChange will fire.
-      });
-
-      $("#btn-logout").addEventListener("click", async () => {
-        await supabase.auth.signOut();
-        // On success, onAuthStateChange will fire.
-      });
-    }
-
-    /* ---------- Boot & Realtime ---------- */
-    async function afterLoginBoot() {
-      await loadNotes();
-      setupRealtime();
-    }
-
-    function setupRealtime() {
-      teardownRealtime(); // Ensure no old subscription is lingering
-      if (!currentUser || !supabase) return;
-
-      notesSubscription = supabase
-        .channel("notes-realtime")
-        .on("postgres_changes", {
-            event: "*",
-            schema: "public",
-            table: "notes",
-            filter: `user_id=eq.${currentUser.id}`
-          },
-          (payload) => {
-            console.log("Realtime change received:", payload);
-            if (payload.eventType === "INSERT") {
-              allNotes.unshift(payload.new);
-            } else if (payload.eventType === "UPDATE") {
-              const i = allNotes.findIndex(n => n.id === payload.new.id);
-              if (i > -1) allNotes[i] = payload.new;
-              else allNotes.unshift(payload.new); // Add if not found
-            } else if (payload.eventType === "DELETE") {
-              allNotes = allNotes.filter(n => n.id !== payload.old.id);
-            }
-            
-            // Re-sort by updated_at after any change
-            allNotes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-            refreshAllViews();
-          }
-        ).subscribe();
-    }
-
-    function teardownRealtime() {
-      if (notesSubscription) {
-        supabase.removeChannel(notesSubscription);
-        notesSubscription = null;
-      }
-    }
-    
-    function clearAllData() {
-        allNotes = [];
-        activeTopicFilter = null;
-        currentEditingId = null;
-        teardownRealtime();
-        refreshAllViews();
-        $("#results").innerHTML = `<div class="empty">Log in to search your notes.</div>`;
-        $("#topicsCloud").innerHTML = `<div class="hint">Log in to see your topics.</div>`;
-        $("#topicList").innerHTML = `<div class="empty">Log in to see your notes.</div>`;
-    }
-
-    /* ---------- CRUD ---------- */
-    async function loadNotes() {
-      if (!currentUser) return;
-      
-      const { data, error } = await supabase
-        .from("notes")
-        .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(1000);
-        
-      if (error) {
-        console.error(error);
-        return showAlert("Failed to load notes.");
-      }
-      
-      allNotes = data || [];
-      refreshAllViews();
-    }
-
-    async function saveNote() {
-      if (!currentUser) return showAlert("Please log in first.");
-
-      const payload = {
-        id: currentEditingId || undefined, // Let Supabase generate if new
-        user_id: currentUser.id,
-        title: $("#title").value.trim(),
-        question_id: $("#qid").value.trim(),
-        topics: parseComma($("#topics").value),
-        refs: $("#refs").value.trim(),
-        body: $("#body").value,
-        updated_at: new Date().toISOString()
-      };
-      
-      // If it's a new note, remove the undefined ID
-      if (!currentEditingId) {
-        delete payload.id;
-      }
-
-      $("#saveStatus").textContent = "Saving...";
-      
-      const { data, error } = await supabase
-        .from("notes")
-        .upsert(payload, { onConflict: "id" })
-        .select()
-        .single();
-
-      if (error) {
-        console.error(error);
-        $("#saveStatus").textContent = "Save failed.";
-        return showAlert(`Save failed: ${error.message}`);
-      }
-      
-      // Realtime will handle the UI update, but we can speed it up
-      if (currentEditingId) {
-         const i = allNotes.findIndex(n => n.id === currentEditingId);
-         if (i > -1) allNotes[i] = data;
-      } else {
-         allNotes.unshift(data);
-      }
-      allNotes.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-      refreshAllViews();
-
-
-      $("#saveStatus").textContent = "Saved ✔";
-      await sleep(900);
-      $("#saveStatus").textContent = "";
-      resetForm();
-    }
-
-    async function deleteNote(id) {
-      if (await showConfirm("Delete this note?")) {
-        const { error } = await supabase.from("notes").delete().eq("id", id);
-        if (error) {
-          console.error(error);
-          showAlert("Delete failed.");
-        }
-        // UI will update via realtime
-      }
-    }
-
-    function editNote(n) {
-      $("#title").value = n.title || "";
-      $("#qid").value = n.question_id || "";
-      $("#topics").value = (n.topics || []).join(", ");
-      $("#refs").value = n.refs || "";
-      $("#body").value = n.body || "";
-      
-      currentEditingId = n.id; // Store the ID for saving
-      $("#saveBtn").textContent = "Update Note";
-      $("#resetBtn").textContent = "Cancel Edit";
-
-      // Switch to "Add" tab
-      $$(".tab").forEach(b => b.classList.remove("active"));
-      $("[data-tab='add']").classList.add("active");
-      $("#add").style.display = "";
-      $("#browse").style.display = "none";
-      $("#title").focus();
-    }
-
-    function resetForm() {
-      $("#title").value = "";
-      $("#qid").value = "";
-      $("#topics").value = "";
-      $("#refs").value = "";
-      $("#body").value = "";
-      $("#saveStatus").textContent = "";
-      
-      currentEditingId = null; // Clear the editing ID
-      $("#saveBtn").textContent = "Save Note";
-      $("#resetBtn").textContent = "Clear";
-    }
-
-    /* ---------- Search ---------- */
-    const debounce = (fn, ms) => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(fn, ms);
-    };
-
-    function setupSearch() {
-      $("#q").addEventListener("input", () => debounce(() => runSearch('#q', '#results'), 150));
-      $("#q-browse").addEventListener("input", () => debounce(() => refreshAllViews(), 150));
-    }
-
-    function parseSearch(q) {
-      const out = { topic: null, qid: null, title: null, plain: null };
-      if (!q) return out;
-      
-      const parts = q.toLowerCase().trim().split(/\s+/g);
-      const rest = [];
-      for (const p of parts) {
-        if (p.startsWith("topic:")) out.topic = p.slice(6);
-        else if (p.startsWith("qid:")) out.qid = p.slice(4);
-        else if (p.startsWith("title:")) out.title = p.slice(6);
-        else rest.push(p);
-      }
-      out.plain = rest.join(" ").trim() || null;
-      return out;
-    }
-
-    function filterNotes(notes, query, topicFilter) {
-      if (!notes.length) return [];
-      
-      const p = parseSearch(query);
-      let res = notes;
-
-      if (topicFilter) {
-        res = res.filter(n => (n.topics || []).some(t => t.toLowerCase() === topicFilter.toLowerCase()));
-      }
-      if (p.topic) {
-        res = res.filter(n => (n.topics || []).some(t => t.toLowerCase().includes(p.topic)));
-      }
-      if (p.qid) {
-        res = res.filter(n => (n.question_id || "").toLowerCase().includes(p.qid));
-      }
-      if (p.title) {
-        res = res.filter(n => (n.title || "").toLowerCase().includes(p.title));
-      }
-      if (p.plain) {
-        const s = p.plain;
-        res = res.filter(n =>
-          (n.title || "").toLowerCase().includes(s) ||
-          (n.body || "").toLowerCase().includes(s) ||
-          (n.refs || "").toLowerCase().includes(s) ||
-          (n.question_id || "").toLowerCase().includes(s) ||
-          (n.topics || []).some(t => t.toLowerCase().includes(s))
-        );
-      }
-      return res.slice(0, 100);
-    }
-
-    function runSearch(inputSel, targetSel) {
-      if (!currentUser) return;
-      const q = $(inputSel).value.trim();
-      const list = filterNotes(allNotes, q, null); // "Add" tab search ignores topic filter
-      renderResults(targetSel, list, q);
-    }
-
-    /* ---------- Rendering ---------- */
-    function renderResults(targetSel, list, query) {
-      const container = $(targetSel);
-      if (!container) return;
-      
-      if (!list.length && query) {
-        container.innerHTML = `<div class="empty">No matches for <b>${escapeHtml(query)}</b>.</div>`;
-        return;
-      }
-      if (!list.length && !query) {
-        container.innerHTML = (targetSel === '#results') 
-          ? `<div class="empty">Search results will appear here.</div>`
-          : `<div class="empty">No matching notes.</div>`;
-        return;
-      }
-      
-      container.innerHTML = list.map(n => {
-        const topics = (n.topics || []).map(t => `<span>${escapeHtml(t)}</span>`).join(" ");
-        return `
-          <div class="result">
-            <h3>${escapeHtml(n.title || "Untitled")}</h3>
-            <div class="meta">
-              <span>QID: ${escapeHtml(n.question_id || "n/a")}</span>
-              <span class="meta-topics">${topics || '<span>(untagged)</span>'}</span>
-              <span>${new Date(n.updated_at).toLocaleString()}</span>
-            </div>
-            <div class="spacer"></div>
-            <div class="text">${linkify(escapeHtml(n.body || ""))}</div>
-            <div class="spacer"></div>
-            <div class="inline-actions" data-id="${n.id}">
-              <button class="btn small secondary edit">Edit</button>
-              <button class="btn small warn del">Delete</button>
-            </div>
-          </div>`;
-      }).join("");
-    }
-
-    function buildTopicChips(notes) {
-      const chips = $("#topicsCloud");
-      const set = new Set();
-      notes.forEach(n => (n.topics || []).forEach(t => set.add(t)));
-      const arr = [...set].sort((a, b) => a.localeCompare(b));
-      
-      chips.innerHTML = arr.map(t => 
-        `<span class="chip btn ${t === activeTopicFilter ? 'active' : ''}" data-chip="${escapeHtml(t)}">${escapeHtml(t)}</span>`
-      ).join("") || `<span class="hint">No topics yet.</span>`;
-
-      if (activeTopicFilter) {
-        chips.innerHTML += ` <button class="btn small secondary" id="clear-topic-filter">Clear</button>`;
-      }
-    }
-
-    function renderTopicList(notes) {
-      const wrap = $("#topicList");
-      const q = $('#q-browse').value.trim();
-      
-      const filteredNotes = filterNotes(notes, q, activeTopicFilter);
-
-      if (!filteredNotes.length) {
-        if (q) wrap.innerHTML = `<div class="empty">No notes match your search.</div>`;
-        else if (activeTopicFilter) wrap.innerHTML = `<div class="empty">No notes found for topic: <b>${escapeHtml(activeTopicFilter)}</b>.</div>`;
-        else if (!notes.length) wrap.innerHTML = `<div class="empty">No notes yet.</div>`;
-        else wrap.innerHTML = `<div class="empty">No notes to display.</div>`;
-        return;
-      }
-
-      const map = new Map();
-      filteredNotes.forEach(n => {
-        (n.topics && n.topics.length ? n.topics : ["(untagged)"]).forEach(t => {
-          if (activeTopicFilter && t.toLowerCase() !== activeTopicFilter.toLowerCase()) return;
-          if (!map.has(t)) map.set(t, []);
-          map.get(t).push(n);
-        });
-      });
-
-      wrap.innerHTML = [...map.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([topic, items]) => {
-          const rows = items.map(n => `
-            <div class="result">
-              <h3>${escapeHtml(n.title || "Untitled")}</h3>
-              <div class="meta">
-                <span>QID: ${escapeHtml(n.question_id || "n/a")}</span>
-                <span>${new Date(n.updated_at).toLocaleString()}</span>
-              </div>
-              <div class="text">${linkify(escapeHtml(n.body || ""))}</div>
-              <div class="inline-actions" data-id="${n.id}">
-                <button class="btn small secondary edit">Edit</button>
-                <button class="btn small warn del">Delete</button>
-              </div>
-            </div>`).join("");
-
-          return `
-            <div class="topic-group">
-              <div class="topic-title">${escapeHtml(topic)}</div>
-              <div class="spacer"></div>
-              ${rows}
-            </div>`;
-        }).join("");
-    }
-    
-    /* ---------- Event Delegation for Dynamic Content ---------- */
-    function setupDynamicListeners() {
-        document.body.addEventListener("click", (e) => {
-            // Topic Chip Clicks
-            if (e.target.matches("#topicsCloud [data-chip]")) {
-                activeTopicFilter = (activeTopicFilter === e.target.dataset.chip) ? null : e.target.dataset.chip;
-                refreshAllViews();
-            }
-            if (e.target.matches("#clear-topic-filter")) {
-                activeTopicFilter = null;
-                refreshAllViews();
-            }
-            
-            // Edit/Delete Buttons
-            const parentActions = e.target.closest(".inline-actions[data-id]");
-            if (parentActions) {
-                const id = parentActions.dataset.id;
-                const note = allNotes.find(n => n.id === id);
-                if (!note) return;
-                
-                if (e.target.matches(".edit")) {
-                    editNote(note);
-                }
-                if (e.target.matches(".del")) {
-                    deleteNote(id);
-                }
-            }
-        });
-    }
-
-    /* ---------- Tools ---------- */
-    function setupTools() {
-      $("#exportBtn").addEventListener("click", () => {
-        if (!currentUser) return showAlert("Log in first.");
-        const data = JSON.stringify({ exported_at: new Date().toISOString(), notes: allNotes }, null, 2);
-        const blob = new Blob([data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "supabase-notes-export.json";
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-
-      $("#importBtn").addEventListener("click", () => {
-        if (!currentUser) return showAlert("Log in first.");
-        $("#importFile").click();
-      });
-      
-      $("#importFile").addEventListener("change", async (e) => {
-        const f = e.target.files?.[0];
-        if (!f) return;
-        
-        let parsed;
-        try {
-          parsed = JSON.parse(await f.text());
-        } catch {
-          return showAlert("Invalid JSON file.");
-        }
-        
-        const incoming = parsed.notes || [];
-        if (!incoming.length) return showAlert("No notes found in file.");
-
-        const map = new Map(allNotes.map(n => [n.id, n]));
-        const upserts = [];
-        
-        for (const n of incoming) {
-          if (!n.id || !n.updated_at) continue; // Skip notes without id or timestamp
-          const ex = map.get(n.id);
-          
-          if (!ex || new Date(n.updated_at) > new Date(ex.updated_at)) {
-            upserts.push({
-              id: n.id,
-              user_id: currentUser.id,
-              title: n.title || "",
-              question_id: n.question_id || "",
-              topics: n.topics || [],
-              refs: n.refs || "",
-              body: n.body || "",
-              created_at: n.created_at || new Date().toISOString(),
-              updated_at: n.updated_at || new Date().toISOString()
-            });
-          }
-        }
-        
-        if (!upserts.length) return showAlert("Nothing to import (all notes are same or older).");
-        
-        const { error } = await supabase.from("notes").upsert(upserts, { onConflict: "id" });
-        if (error) {
-            console.error(error);
-            return showAlert(`Import failed: ${error.message}`);
-        }
-        
-        await showAlert(`Import complete. ${upserts.length} notes merged.`);
-        e.target.value = null; // Reset file input
-        await loadNotes(); // Manually refresh after import
-      });
-
-      $("#nukeBtn").addEventListener("click", async () => {
-        if (!currentUser) return showAlert("Log in first.");
-        if (await showConfirm("This will delete ALL your notes permanently. Are you sure?")) {
-          const { error } = await supabase.from("notes").delete().eq("user_id", currentUser.id);
-          if (error) {
-              console.error(error);
-              return showAlert(`Delete failed: ${error.message}`);
-          }
-          await showAlert("All notes deleted.");
-          // UI will update via realtime
-        }
-      });
-    }
-
-    /* ---------- Main App Logic ---------- */
-    function refreshAllViews() {
-      if (!currentUser) return;
-      
-      buildTopicChips(allNotes);
-      renderTopicList(allNotes);
-      runSearch('#q', '#results'); // "Add" tab search
-      
-      // The "Browse" search results (if needed, but topic list handles it)
-      const qBrowse = $("#q-browse").value.trim();
-      if (qBrowse) {
-          const browseList = filterNotes(allNotes, qBrowse, activeTopicFilter);
-          renderResults("#results-browse", browseList, qBrowse);
-          $("#topicList").style.display = "none";
-          $("#results-browse").style.display = "block";
-      } else {
-          $("#topicList").style.display = "block";
-          $("#results-browse").style.display = "none";
-      }
-    }
-
-    function setupForm() {
-      $("#saveBtn").addEventListener("click", saveNote);
-      $("#resetBtn").addEventListener("click", resetForm);
-      
-      document.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "enter") {
-          // Only save if one of the form fields is focused
-          if(document.activeElement && ["title", "qid", "topics", "refs", "body"].includes(document.activeElement.id)) {
-            e.preventDefault();
-            saveNote();
-          }
-        }
-      });
-    }
-
-    /* ---------- App Initialization ---------- */
-    function init() {
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === "YOUR_SUPABASE_URL") {
-        document.body.innerHTML = `<div style="padding: 40px; text-align: center; font-size: 1.2em; line-height: 1.6;">
-          <h1>Error: Supabase Not Configured</h1>
-          <p>Please edit the <b>index.html</b> file and replace<br>
-          <code>YOUR_SUPABASE_URL</code> and <code>YOUR_SUPABASE_ANON_KEY</code><br>
-          with your project's credentials.</p>
-        </div>`;
-        return;
-      }
-
-      try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: { 
-                persistSession: true, 
-                autoRefreshToken: true, 
-                detectSessionInUrl: true 
-            }
-        });
-      } catch (e) {
-        console.error(e);
-        showAlert(`Failed to initialize Supabase: ${e.message}`);
-        return;
-      }
-      
-      setupTabs();
-      setupAuthListeners();
-      setupSearch();
-      setupForm();
-      setupTools();
-      setupDynamicListeners();
-
-      // This is the single source of truth for auth state changes.
-      supabase.auth.onAuthStateChange(() => refreshSessionUI());
-      
-      // Initial call to set UI state (logged out or logged in)
-      refreshSessionUI();
-    }
-    
-    // Start the app
-    document.addEventListener("DOMContentLoaded", init);
-
   </script>
+  <script src="script.js"></script>
 </body>
 </html>
-
