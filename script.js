@@ -1,8 +1,13 @@
-/* JAM Notes — Fresh Build
-   - Supabase Email/Password auth
+/* JAM Notes — Robust Auth Build
+   Fixes:
+   - Session persists across refresh
+   - Login always works after refresh
+   - Single boot / single realtime channel
+   Features:
+   - Email/Password auth
    - Cloud-only notes with realtime
-   - Instant UI update after Save
-   - Dual live search (Add + Browse)
+   - Instant UI update on Save
+   - Live search (Add + Browse)
    - Topic chips, grouped browse, edit/delete
    - Export/Import/Delete All
 */
@@ -10,7 +15,13 @@
 const supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+  {
+    auth: {
+      persistSession: true,         // keep session in localStorage
+      autoRefreshToken: true,       // refresh access token in background
+      detectSessionInUrl: false     // not using OAuth redirects here
+    }
+  }
 );
 
 /* ---------------- State ---------------- */
@@ -19,6 +30,7 @@ let allNotes = [];
 let activeTopicFilter = null;
 let debounceTimer = null;
 let rtChannel = null;
+let bootedForUserId = null; // prevents double boot per user
 
 /* ---------------- Helpers ---------------- */
 const $  = (s) => document.querySelector(s);
@@ -54,26 +66,66 @@ function setAuthState(isLoggedIn){
   });
 })();
 
-/* ---------------- Auth ---------------- */
-async function refreshSessionUI(){
-  const { data } = await supabase.auth.getSession();
-  currentUser = data.session?.user ?? null;
+/* ---------------- Auth Lifecycle (event-driven) ----------------
+   We rely on Supabase events to hydrate session on load and keep it updated.
+   Handle: INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, SIGNED_OUT
+----------------------------------------------------------------- */
+function handleSignedIn(session){
+  currentUser = session?.user ?? null;
+  if(!currentUser) return;
 
-  if(currentUser){
-    $("#session-email").textContent = `Signed in as ${currentUser.email}`;
-    setAuthState(true);
-    await bootAfterLogin();
-  }else{
-    $("#session-email").textContent = "";
-    setAuthState(false);
-    allNotes = [];
-    renderResults("#results", []);
-    renderResults("#results-browse", []);
-    renderTopicList([]);
-    teardownRealtime();
+  $("#session-email").textContent = `Signed in as ${currentUser.email}`;
+  setAuthState(true);
+
+  // Boot only once per user (prevents duplicate realtime channels after refresh)
+  if (bootedForUserId !== currentUser.id) {
+    bootedForUserId = currentUser.id;
+    bootAfterLogin().catch(console.error);
   }
 }
 
+function handleSignedOut(){
+  currentUser = null;
+  bootedForUserId = null;
+  teardownRealtime();
+
+  setAuthState(false);
+  $("#session-email").textContent = "";
+
+  allNotes = [];
+  renderResults("#results", []);
+  renderResults("#results-browse", []);
+  renderTopicList([]);
+}
+
+supabase.auth.onAuthStateChange((event, session) => {
+  // Important: this fires on page load with INITIAL_SESSION (session from localStorage)
+  switch (event) {
+    case "INITIAL_SESSION":
+      if (session) handleSignedIn(session);
+      else handleSignedOut();
+      break;
+    case "SIGNED_IN":
+      handleSignedIn(session);
+      break;
+    case "TOKEN_REFRESHED":
+    case "USER_UPDATED":
+      // keep currentUser fresh if profile changes or token refreshes
+      currentUser = session?.user ?? currentUser;
+      break;
+    case "SIGNED_OUT":
+      handleSignedOut();
+      break;
+  }
+});
+
+/* Also query current session once on load to ensure immediate hydration */
+(async function hydrateOnce(){
+  const { data } = await supabase.auth.getSession();
+  if (data.session) handleSignedIn(data.session);
+})();
+
+/* ---------------- Manual Auth Actions ---------------- */
 $("#btn-signup").addEventListener("click", async ()=>{
   const email = $("#email").value.trim();
   const password = $("#password").value;
@@ -87,24 +139,15 @@ $("#btn-login").addEventListener("click", async ()=>{
   const email = $("#email").value.trim();
   const password = $("#password").value;
   if(!email || !password) return alert("Email & password required.");
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if(error) return alert(error.message);
-  currentUser = data.user ?? data.session?.user ?? null;
-  if(currentUser){
-    $("#session-email").textContent = `Signed in as ${currentUser.email}`;
-    setAuthState(true);
-    await bootAfterLogin();
-  }else{
-    await refreshSessionUI();
-  }
+  // No manual UI flip here — we rely on the SIGNED_IN event above
 });
 
 $("#btn-logout").addEventListener("click", async ()=>{
   await supabase.auth.signOut();
-  await refreshSessionUI();
+  // SIGNED_OUT event will clear UI
 });
-
-supabase.auth.onAuthStateChange(()=>refreshSessionUI());
 
 /* ---------------- Boot + Realtime ---------------- */
 async function bootAfterLogin(){
@@ -116,18 +159,17 @@ async function bootAfterLogin(){
 
 function setupRealtime(){
   teardownRealtime();
+  if (!currentUser) return;
+
   rtChannel = supabase
     .channel("notes-rt")
     .on("postgres_changes",
       { event:"*", schema:"public", table:"notes", filter:`user_id=eq.${currentUser.id}` },
       (payload)=>{
-        // Update in-memory cache for OTHER clients' changes
         if(payload.eventType==="INSERT"){
-          // avoid duplicate if we just added it ourselves
           if(!allNotes.some(n=>n.id===payload.new.id)){
             allNotes.unshift(payload.new);
           } else {
-            // ensure freshest updated_at
             const idx = allNotes.findIndex(n=>n.id===payload.new.id);
             allNotes[idx] = payload.new;
           }
@@ -149,6 +191,7 @@ function teardownRealtime(){
 
 /* ---------------- CRUD ---------------- */
 async function loadNotes(){
+  if(!currentUser) return;
   const { data, error } = await supabase
     .from("notes")
     .select("*")
@@ -172,7 +215,7 @@ async function saveNote(){
     body: $("#body").value
   };
 
-  // Ask for the upserted row back so we can update UI instantly
+  // Return the row so we can update UI instantly
   const { data, error } = await supabase
     .from("notes")
     .upsert(payload, { onConflict:"id" })
@@ -185,9 +228,9 @@ async function saveNote(){
     return;
   }
 
-  // Instant UI update: inject (dedupe by id)
-  const existingIndex = allNotes.findIndex(n=>n.id===data.id);
-  if(existingIndex>-1) allNotes[existingIndex] = data; else allNotes.unshift(data);
+  // Inject/update locally for instant feedback
+  const i = allNotes.findIndex(n=>n.id===data.id);
+  if(i>-1) allNotes[i] = data; else allNotes.unshift(data);
   refreshLists();
 
   $("#saveStatus").textContent = "Saved ✔";
@@ -436,6 +479,3 @@ function refreshLists(){
   runSearch("#q", "#results");
   runSearch("#q-browse", "#results-browse");
 }
-
-/* ---------------- Boot ---------------- */
-refreshSessionUI();
