@@ -87,4 +87,3 @@ textarea{min-height:200px; line-height:1.5; resize:vertical}
 @media (max-width: 960px){
   .panel-grid{grid-template-columns: 1fr;}
 }
-
